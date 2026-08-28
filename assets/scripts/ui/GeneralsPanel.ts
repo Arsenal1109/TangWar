@@ -16,6 +16,7 @@ export class GeneralsPanel extends Component {
     private selectedId = 'taiyuan';
     private listRoot!: Node;
     private titleLabel!: Label;
+    private feedbackLabel!: Label;
 
     init(bus: EventBus<GameEvents>, states: CityState[]): this {
         this.bus = bus;
@@ -33,6 +34,7 @@ export class GeneralsPanel extends Component {
         this.node.addComponent(UITransform).setContentSize(700, 420);
         this.node.setPosition(0, -667 + 260, 2);
         this.titleLabel = this.makeLabel('将领', 38, InkTheme.darkText, 0, 170);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -160);
         this.listRoot = new Node('general-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -73,7 +75,8 @@ export class GeneralsPanel extends Component {
                     return;
                 }
                 const r = assignGeneral(g, city.id, 'governor');
-                console.log(`[将领] 任命 ${g.name} 为 ${city.name} 守将：${r.ok ? '成功' : r.reason}`);
+                this.feedbackLabel.color = r.ok ? InkTheme.ink : InkTheme.cinnabar;
+                this.feedbackLabel.string = r.ok ? `任命 ${g.name} 为 ${city.name} 守将成功` : `任命 ${g.name}：${r.reason}`;
                 this.refresh();
             });
             this.listRoot.addChild(row);

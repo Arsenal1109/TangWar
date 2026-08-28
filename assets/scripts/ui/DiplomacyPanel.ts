@@ -13,6 +13,7 @@ export class DiplomacyPanel extends Component {
     private state!: DiplomacyState;
     private listRoot!: Node;
     private titleLabel!: Label;
+    private feedbackLabel!: Label;
 
     init(bus: EventBus<GameEvents>): this {
         this.bus = bus;
@@ -25,6 +26,7 @@ export class DiplomacyPanel extends Component {
         this.node.addComponent(UITransform).setContentSize(700, 420);
         this.node.setPosition(0, -667 + 260, 2);
         this.titleLabel = this.makeLabel('外交', 38, InkTheme.darkText, 0, 170);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -160);
         this.listRoot = new Node('diplo-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -61,7 +63,8 @@ export class DiplomacyPanel extends Component {
             label.overflow = 3;
             row.on(Node.EventType.TOUCH_END, () => {
                 const res = performDiplo(this.state, 'tang', f.id, 'tribute', { gold: 500, prestige: 80, armyPower: 30000 });
-                console.log(`[外交] ${res.message}${res.ok ? '' : '（' + res.reason + '）'}`);
+                this.feedbackLabel.color = res.ok ? InkTheme.ink : InkTheme.cinnabar;
+                this.feedbackLabel.string = res.ok ? res.message : `${res.message}（${res.reason}）`;
                 this.refresh();
             });
             this.listRoot.addChild(row);

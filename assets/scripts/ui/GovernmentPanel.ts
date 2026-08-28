@@ -16,6 +16,7 @@ export class GovernmentPanel extends Component {
     private selectedId = 'taiyuan';
     private titleLabel!: Label;
     private resLabel!: Label;
+    private feedbackLabel!: Label;
     private listRoot!: Node;
 
     init(bus: EventBus<GameEvents>, states: CityState[]): this {
@@ -36,6 +37,7 @@ export class GovernmentPanel extends Component {
 
         this.titleLabel = this.makeLabel('内政', 40, InkTheme.darkText, 0, 220);
         this.resLabel = this.makeLabel('', 24, InkTheme.labelText, 0, 160);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -150);
         this.listRoot = new Node('policy-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -78,7 +80,8 @@ export class GovernmentPanel extends Component {
             label.overflow = 3; // OVERFLOW_SHRINK
             row.on(Node.EventType.TOUCH_END, () => {
                 const r = applyPolicy(city, p.id);
-                console.log(`[内政] ${p.name}：${r.ok ? '施行成功' : r.reason}`);
+                this.feedbackLabel.color = r.ok ? InkTheme.ink : InkTheme.cinnabar;
+                this.feedbackLabel.string = r.ok ? `施行「${p.name}」成功` : `施行「${p.name}」：${r.reason}`;
                 this.refresh();
             });
             this.listRoot.addChild(row);

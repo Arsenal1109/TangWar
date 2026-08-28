@@ -15,6 +15,7 @@ export class MilitaryPanel extends Component {
     private states: CityState[] = [];
     private selectedId = 'taiyuan';
     private titleLabel!: Label;
+    private feedbackLabel!: Label;
     private listRoot!: Node;
 
     init(bus: EventBus<GameEvents>, states: CityState[]): this {
@@ -33,6 +34,7 @@ export class MilitaryPanel extends Component {
         this.node.addComponent(UITransform).setContentSize(700, 380);
         this.node.setPosition(0, -667 + 250, 2);
         this.titleLabel = this.makeLabel('军事 · 募兵', 38, InkTheme.darkText, 0, 140);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -135);
         this.listRoot = new Node('recruit-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -73,7 +75,8 @@ export class MilitaryPanel extends Component {
             label.overflow = 3; // OVERFLOW_SHRINK
             row.on(Node.EventType.TOUCH_END, () => {
                 const r = recruit(city, t, 1);
-                console.log(`[军事] 募${def.name}1千：${r.ok ? '成功' : r.reason}`);
+                this.feedbackLabel.color = r.ok ? InkTheme.ink : InkTheme.cinnabar;
+                this.feedbackLabel.string = r.ok ? `募${def.name}1千：成功` : `募${def.name}：${r.reason}`;
                 this.refresh();
             });
             this.listRoot.addChild(row);
