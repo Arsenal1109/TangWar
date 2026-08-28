@@ -1,3 +1,5 @@
+import type { TroopType } from '../data/Troops';
+
 export interface CityFacilities {
     farm: number;     // 农田 0..3
     market: number;   // 商市 0..3
@@ -18,6 +20,7 @@ export interface CityState {
     generalId: string | null;
     facilities: CityFacilities;
     policyUsed: boolean;
+    troops: Record<TroopType, number>; // 各兵种兵力（与 army 同步）
 }
 
 export interface TurnDelta {

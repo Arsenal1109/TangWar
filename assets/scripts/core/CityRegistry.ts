@@ -14,7 +14,8 @@ export function createCityStates(): CityState[] {
         morale: 80,
         generalId: null,
         facilities: { farm: 1, market: 0, barracks: 0, granary: 0 },
-        policyUsed: false
+        policyUsed: false,
+        troops: { fubing: c.tier === 1 ? 8000 : 4000, jingbing: 0, qibing: 0, nubing: 0, xuanjia: 0, shuijun: 0 }
     }));
 }
 

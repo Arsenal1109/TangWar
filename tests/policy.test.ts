@@ -4,12 +4,13 @@ import { POLICIES } from '../assets/scripts/data/Policies';
 import type { CityState } from '../assets/scripts/core/ResourceSystem';
 
 function makeCity(partial: Partial<CityState>): CityState {
-    return {
+    const merged = {
         id: 'c', name: '城', faction: 'tang', population: 10, food: 2000,
         gold: 2000, army: 5000, defense: 5, morale: 80, generalId: null,
         facilities: { farm: 1, market: 0, barracks: 0, granary: 0 }, policyUsed: false,
         ...partial
     };
+    return { ...merged, troops: { fubing: merged.army, jingbing: 0, qibing: 0, nubing: 0, xuanjia: 0, shuijun: 0 } };
 }
 
 describe('PolicySystem 施策', () => {
