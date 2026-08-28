@@ -11,6 +11,8 @@ import { MilitaryPanel } from './ui/MilitaryPanel';
 import { GeneralsPanel } from './ui/GeneralsPanel';
 import { DiplomacyPanel } from './ui/DiplomacyPanel';
 import { EventsPanel } from './ui/EventsPanel';
+import { SaveManager } from './ui/SaveManager';
+import { SoundManager } from './ui/SoundManager';
 import { CITIES } from './data/Cities';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
 import { createWorld, type WorldState } from './core/WorldState';
@@ -32,6 +34,7 @@ export class Bootstrap extends Component {
     private turns = new TurnManager(617, 2);
     private cityStates: CityState[] = [];
     private world!: WorldState;
+    private saveMgr!: SaveManager;
 
     onLoad(): void {
         view.setDesignResolutionSize(750, 1334, ResolutionPolicy.SHOW_ALL);
@@ -87,6 +90,17 @@ export class Bootstrap extends Component {
         this.node.addChild(ev);
         ev.addComponent(EventsPanel).init(this.bus);
 
+        // 音效（占位）与自动存档
+        this.node.addComponent(SoundManager).init(this.bus);
+        this.saveMgr = this.node.addComponent(SaveManager);
+
+        // 启动时优先读档
+        if (this.saveMgr.hasSave()) {
+            this.saveMgr.load(this.world);
+            this.turns.year = this.world.year;
+            this.turns.seasonIndex = this.world.seasonIndex;
+        }
+
         // 回合推进：同步运行态、结算 AI/资源/事件/结局，清空各城施政标记
         this.bus.on('turn-advanced', (p) => {
             this.world.year = this.turns.year;
@@ -100,6 +114,7 @@ export class Bootstrap extends Component {
             }
             resetTurnFlags(this.cityStates);
             console.log(`[回合] ${p.year} ${p.season} 第 ${p.turn} 回合`);
+            this.saveMgr.save(this.world);
         });
     }
 }
