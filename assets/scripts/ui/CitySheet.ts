@@ -1,7 +1,8 @@
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
-import type { CityDef } from '../core/Types';
+import type { CityState } from '../core/ResourceSystem';
+import { findCity } from '../core/CityRegistry';
 import { getFaction } from '../data/Factions';
 import { InkTheme } from './InkTheme';
 
@@ -10,14 +11,14 @@ const { ccclass } = _decorator;
 @ccclass('CitySheet')
 export class CitySheet extends Component {
     private bus!: EventBus<GameEvents>;
-    private cities: CityDef[] = [];
+    private states: CityState[] = [];
     private titleLabel!: Label;
     private infoLabel!: Label;
     private rootNode!: Node;
 
-    init(bus: EventBus<GameEvents>, cities: CityDef[]): this {
+    init(bus: EventBus<GameEvents>, states: CityState[]): this {
         this.bus = bus;
-        this.cities = cities;
+        this.states = states;
         this.build();
         bus.on('city-selected', (p) => this.showCity(p.cityId));
         return this;
@@ -52,14 +53,16 @@ export class CitySheet extends Component {
     }
 
     private showCity(cityId: string): void {
-        const c = this.cities.find((item) => item.id === cityId);
+        const c = findCity(this.states, cityId);
         if (!c) {
             return;
         }
         const f = getFaction(c.faction);
-        this.titleLabel.string = c.name;
+        const foodYield = Math.floor(c.population * 10 * (1 + 0.2 * c.facilities.farm));
+        const goldYield = Math.floor(c.population * 4 * (1 + 0.2 * c.facilities.market));
+        this.titleLabel.string = `${c.name} · ${f.name}`;
         this.infoLabel.string =
-            `${f.name}\n人口 — · 兵力 — · 守将 —\n民心 — · 城防 —（M2 起填充数值）`;
+            `人口 ${c.population} 万 · 兵力 ${c.army}\n民心 ${c.morale} · 城防 ${c.defense} · 金 ${c.gold} · 粮 ${c.food}\n每季产粮 ${foodYield} · 产金 ${goldYield}${c.generalId ? `\n守将 ${c.generalId}` : ''}`;
         this.show();
     }
 

@@ -64,7 +64,7 @@ export class Bootstrap extends Component {
         // 城池底部卡片
         const sheet = new Node('CitySheet');
         this.node.addChild(sheet);
-        sheet.addComponent(CitySheet).init(this.bus, CITIES);
+        sheet.addComponent(CitySheet).init(this.bus, this.cityStates);
 
         // 内政面板
         const gov = new Node('GovernmentPanel');
