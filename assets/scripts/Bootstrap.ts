@@ -84,7 +84,7 @@ export class Bootstrap extends Component {
         // 外交面板
         const dip = new Node('DiplomacyPanel');
         this.node.addChild(dip);
-        dip.addComponent(DiplomacyPanel).init(this.bus);
+        dip.addComponent(DiplomacyPanel).init(this.bus, this.cityStates);
 
         // 底部导航切换：同一时刻仅显示一个功能面板，默认内政
         const panels: Record<string, Node> = { gov, mil, gen, dip };
