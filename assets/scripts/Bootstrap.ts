@@ -8,6 +8,8 @@ import { BottomNav } from './ui/BottomNav';
 import { CitySheet } from './ui/CitySheet';
 import { GovernmentPanel } from './ui/GovernmentPanel';
 import { MilitaryPanel } from './ui/MilitaryPanel';
+import { GeneralsPanel } from './ui/GeneralsPanel';
+import { DiplomacyPanel } from './ui/DiplomacyPanel';
 import { CITIES } from './data/Cities';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
 import type { CityState } from './core/ResourceSystem';
@@ -63,6 +65,16 @@ export class Bootstrap extends Component {
         const mil = new Node('MilitaryPanel');
         this.node.addChild(mil);
         mil.addComponent(MilitaryPanel).init(this.bus, this.cityStates);
+
+        // 将领面板
+        const gen = new Node('GeneralsPanel');
+        this.node.addChild(gen);
+        gen.addComponent(GeneralsPanel).init(this.bus, this.cityStates);
+
+        // 外交面板
+        const dip = new Node('DiplomacyPanel');
+        this.node.addChild(dip);
+        dip.addComponent(DiplomacyPanel).init(this.bus);
 
         // 回合推进：清空各城施政标记
         this.bus.on('turn-advanced', (p) => {
