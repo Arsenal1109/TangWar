@@ -6,7 +6,10 @@ import { MapCamera } from './map/MapCamera';
 import { TopBar } from './ui/TopBar';
 import { BottomNav } from './ui/BottomNav';
 import { CitySheet } from './ui/CitySheet';
+import { GovernmentPanel } from './ui/GovernmentPanel';
 import { CITIES } from './data/Cities';
+import { createCityStates, resetTurnFlags } from './core/CityRegistry';
+import type { CityState } from './core/ResourceSystem';
 
 const { ccclass } = _decorator;
 
@@ -20,9 +23,11 @@ export interface GameEvents {
 export class Bootstrap extends Component {
     private bus = new EventBus<GameEvents>();
     private turns = new TurnManager(617, 2);
+    private cityStates: CityState[] = [];
 
     onLoad(): void {
         view.setDesignResolutionSize(750, 1334, ResolutionPolicy.SHOW_ALL);
+        this.cityStates = createCityStates();
         this.buildUi();
     }
 
@@ -48,8 +53,14 @@ export class Bootstrap extends Component {
         this.node.addChild(sheet);
         sheet.addComponent(CitySheet).init(this.bus, CITIES);
 
-        // 回合推进日志
+        // 内政面板
+        const gov = new Node('GovernmentPanel');
+        this.node.addChild(gov);
+        gov.addComponent(GovernmentPanel).init(this.bus, this.cityStates);
+
+        // 回合推进：清空各城施政标记
         this.bus.on('turn-advanced', (p) => {
+            resetTurnFlags(this.cityStates);
             console.log(`[回合] ${p.year} ${p.season} 第 ${p.turn} 回合`);
         });
     }
