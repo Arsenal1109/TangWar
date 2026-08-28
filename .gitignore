@@ -1,0 +1,18 @@
+# Cocos Creator 生成目录
+/temp/
+/library/
+/build/
+/profiles/
+/backup/
+/local/
+
+# 依赖与工具
+/node_modules/
+tests/node_modules/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 设计阶段产物（visual companion）
+/.superpowers/
