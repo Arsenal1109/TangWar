@@ -39,8 +39,8 @@ export interface TurnResult {
     events: CityEvent[];
 }
 
-const FOOD_PER_POP_10K = 100;    // 每 1 万人口，每季产粮 100
-const GOLD_PER_POP_10K = 40;     // 每 1 万人口，每季产金 40
+const FOOD_PER_POP = 10;    // 每 1 万人口，每季产粮 10
+const GOLD_PER_POP = 4;     // 每 1 万人口，每季产金 4
 const FOOD_PER_1000_ARMY = 5;    // 每千兵每季耗粮 5
 const FACILITY_FOOD_BONUS = 0.2; // 农田每级 +20% 粮
 const FACILITY_GOLD_BONUS = 0.2; // 商市每级 +20% 金
@@ -52,8 +52,8 @@ export function resolveTurn(cities: CityState[], armyFoodPerThousand = 5): TurnR
     const events: CityEvent[] = [];
 
     for (const c of cities) {
-        const foodGain = Math.floor(c.population / 10) * FOOD_PER_POP_10K * (1 + FACILITY_FOOD_BONUS * c.facilities.farm);
-        const goldGain = Math.floor(c.population / 10) * GOLD_PER_POP_10K * (1 + FACILITY_GOLD_BONUS * c.facilities.market);
+        const foodGain = Math.floor(c.population * FOOD_PER_POP * (1 + FACILITY_FOOD_BONUS * c.facilities.farm));
+        const goldGain = Math.floor(c.population * GOLD_PER_POP * (1 + FACILITY_GOLD_BONUS * c.facilities.market));
         const foodCost = Math.floor(c.army / 1000) * armyFoodPerThousand;
 
         c.gold += goldGain;

@@ -35,4 +35,17 @@ describe('ResourceSystem 回合结算', () => {
         const res = resolveTurn([city], 5);
         expect(city.army).toBeLessThan(4000);
     });
+
+    it('小城（人口 8）产出不为零', () => {
+        const city = makeCity({ population: 8, food: 1000, gold: 100, army: 0 });
+        const res = resolveTurn([city], 5);
+        expect(res.deltas.gold).toBeGreaterThan(0);
+        expect(res.deltas.food).toBeGreaterThan(0);
+    });
+
+    it('人口线性计粮：人口 11 产 110 粮', () => {
+        const city = makeCity({ population: 11, food: 1000, army: 0 });
+        const res = resolveTurn([city], 5);
+        expect(res.deltas.food).toBe(Math.floor(11 * 10)); // 110
+    });
 });
