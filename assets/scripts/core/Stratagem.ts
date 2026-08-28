@@ -14,21 +14,21 @@ function clampLoyalty(v: number): number {
 
 export function sowDiscord(target: GeneralState, selfStrategy: number, gold: number, rng?: () => number): StratagemResult {
     const roll = rng ? rng() : Math.random();
-    if (gold < 100) {
+    if (gold < 80) {
         return { ok: false, reason: '黄金不足', goldCost: 0, message: '' };
     }
     const prob = Math.min(0.9, 0.3 + selfStrategy / 300 - target.loyalty / 200);
     if (roll < prob) {
         const delta = -15;
         target.loyalty = clampLoyalty(target.loyalty + delta);
-        return { ok: true, reason: '', goldCost: 100, loyaltyDelta: delta, message: `离间成功，${target.name}忠诚下降` };
+        return { ok: true, reason: '', goldCost: 80, loyaltyDelta: delta, message: `离间成功，${target.name}忠诚下降` };
     }
-    return { ok: false, reason: '离间被识破', goldCost: 100, message: '离间失败，事泄' };
+    return { ok: false, reason: '离间被识破', goldCost: 80, message: '离间失败，事泄' };
 }
 
 export function bribeGeneral(target: GeneralState, selfStrategy: number, prestige: number, gold: number, rng?: () => number): StratagemResult {
     const roll = rng ? rng() : Math.random();
-    if (gold < 500) {
+    if (gold < 400) {
         return { ok: false, reason: '黄金不足', goldCost: 0, message: '' };
     }
     const prob = Math.min(0.9, 0.2 + gold / 5000 + selfStrategy / 250 + prestige / 200 - target.loyalty / 150);
@@ -42,13 +42,13 @@ export function bribeGeneral(target: GeneralState, selfStrategy: number, prestig
 
 export function spreadRumor(targetMorale: number, selfStrategy: number, gold: number, rng?: () => number): StratagemResult {
     const roll = rng ? rng() : Math.random();
-    if (gold < 50) {
+    if (gold < 40) {
         return { ok: false, reason: '黄金不足', goldCost: 0, message: '' };
     }
     const prob = Math.min(0.9, 0.5 + selfStrategy / 300);
     if (roll < prob) {
         const delta = -6;
-        return { ok: true, reason: '', goldCost: 50, moraleDelta: delta, message: '谣言四起，敌城民心动摇' };
+        return { ok: true, reason: '', goldCost: 40, moraleDelta: delta, message: '谣言四起，敌城民心动摇' };
     }
-    return { ok: false, reason: '谣言被识破', goldCost: 50, message: '谣言未能惑众' };
+    return { ok: false, reason: '谣言被识破', goldCost: 40, message: '谣言未能惑众' };
 }

@@ -26,6 +26,7 @@ export interface GameEvents {
     'turn-advanced': { year: number; season: string; turn: number };
     'city-selected': { cityId: string };
     'world-events': { title: string; messages: string[] };
+    'panel-nav': { key: string };
 }
 
 @ccclass('Bootstrap')
@@ -84,6 +85,21 @@ export class Bootstrap extends Component {
         const dip = new Node('DiplomacyPanel');
         this.node.addChild(dip);
         dip.addComponent(DiplomacyPanel).init(this.bus);
+
+        // 底部导航切换：同一时刻仅显示一个功能面板，默认内政
+        const panels: Record<string, Node> = { gov, mil, gen, dip };
+        const show = (key: string): void => {
+            gov.active = key === 'gov';
+            mil.active = key === 'mil';
+            gen.active = key === 'gen';
+            dip.active = key === 'dip';
+        };
+        show('gov');
+        this.bus.on('panel-nav', (p) => {
+            if (p.key in panels) {
+                show(p.key);
+            }
+        });
 
         // 天下大事推送
         const ev = new Node('EventsPanel');

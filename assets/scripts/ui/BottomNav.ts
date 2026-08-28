@@ -43,7 +43,8 @@ export class BottomNav extends Component {
             this.node.addChild(n);
             n.on(Node.EventType.TOUCH_END, () => {
                 this.activeKey = t.key;
-                console.log(`[导航] 切到「${t.label}」（功能面板 M4 实现）`);
+                console.log(`[导航] 切到「${t.label}」`);
+                this.bus.emit('panel-nav', { key: t.key });
             });
         });
     }

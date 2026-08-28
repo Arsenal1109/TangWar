@@ -71,11 +71,11 @@ export function resolveBattle(att: BattleArmy, def: BattleArmy, opts: BattleOpti
     let attackerLoss: number;
     let defenderLoss: number;
     if (attackerWin) {
-        attackerLoss = Math.round(attTotal * (0.1 + ratio * 0.2) * luck);
-        defenderLoss = Math.round(defTotal * (0.3 + ratio * 0.5));
+        attackerLoss = Math.round(attTotal * (0.12 + ratio * 0.18) * luck);
+        defenderLoss = Math.round(defTotal * (0.18 + ratio * 0.28));
     } else {
-        attackerLoss = Math.round(attTotal * (0.2 + ratio * 0.7) * luck);
-        defenderLoss = Math.round(defTotal * (0.1 + ratio * 0.2));
+        attackerLoss = Math.round(attTotal * (0.18 + ratio * 0.30) * luck);
+        defenderLoss = Math.round(defTotal * (0.12 + ratio * 0.18));
     }
 
     const report = attackerWin

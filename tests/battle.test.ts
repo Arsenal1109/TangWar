@@ -45,4 +45,11 @@ describe('BattleSystem 战争结算', () => {
         expect(r.defenderLoss).toBeLessThanOrEqual(7000);
         expect(r.report.length).toBeGreaterThan(0);
     });
+
+    it('均势遭遇战双方伤亡差距不大（避免一边倒）', () => {
+        const att = army(70, { fubing: 5000, jingbing: 1000 });
+        const def = army(70, { fubing: 5000, jingbing: 1000 });
+        const r = resolveBattle(att, def, { rng: MID_ROLL }); // r=0.5 接近胜率判决
+        expect(Math.abs(r.attackerLoss - r.defenderLoss)).toBeLessThan(1500);
+    });
 });

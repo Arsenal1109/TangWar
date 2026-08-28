@@ -69,8 +69,8 @@ export function applyAiActions(world: WorldState, actions: AiAction[]): void {
             }
         } else if (a.kind === 'reinforce') {
             for (const c of world.cities) {
-                if (c.faction === a.faction && c.gold >= 200) {
-                    c.gold -= 200;
+                if (c.faction === a.faction && c.gold >= 300) {
+                    c.gold -= 300;
                     c.troops.fubing += 500;
                     c.army += 500;
                     world.log.push(a.detail);

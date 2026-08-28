@@ -63,7 +63,7 @@ export function performDiplo(
 
     switch (action) {
         case 'alliance': {
-            if (ctx.gold < 200) {
+            if (ctx.gold < 150) {
                 return { ok: false, reason: '黄金不足', goldCost: 0, relationsDelta: 0, message: '' };
             }
             const prob = Math.min(0.95, base + rel / 200);
@@ -72,31 +72,31 @@ export function performDiplo(
                 if (!state.allies.includes(targetFaction)) {
                     state.allies.push(targetFaction);
                 }
-                return { ok: true, reason: '', goldCost: 200, relationsDelta: 20, message: `与 ${targetFaction} 结盟` };
+                return { ok: true, reason: '', goldCost: 150, relationsDelta: 20, message: `与 ${targetFaction} 结盟` };
             }
-            return { ok: false, reason: '对方拒绝结盟', goldCost: 200, relationsDelta: -10, message: '结盟被拒，关系受挫' };
+            return { ok: false, reason: '对方拒绝结盟', goldCost: 150, relationsDelta: -10, message: '结盟被拒，关系受挫' };
         }
         case 'truce': {
-            if (ctx.gold < 100) {
+            if (ctx.gold < 80) {
                 return { ok: false, reason: '黄金不足', goldCost: 0, relationsDelta: 0, message: '' };
             }
             const prob = Math.min(0.9, base + rel / 200);
             if (r < prob) {
                 state.atWar = state.atWar.filter((f) => f !== targetFaction);
                 state.relations[targetFaction] = clampRel(rel + 10);
-                return { ok: true, reason: '', goldCost: 100, relationsDelta: 10, message: `与 ${targetFaction} 停战` };
+                return { ok: true, reason: '', goldCost: 80, relationsDelta: 10, message: `与 ${targetFaction} 停战` };
             }
-            return { ok: false, reason: '对方拒绝停战', goldCost: 100, relationsDelta: -5, message: '停战被拒' };
+            return { ok: false, reason: '对方拒绝停战', goldCost: 80, relationsDelta: -5, message: '停战被拒' };
         }
         case 'tribute': {
-            if (ctx.gold < 300) {
+            if (ctx.gold < 200) {
                 return { ok: false, reason: '黄金不足', goldCost: 0, relationsDelta: 0, message: '' };
             }
             state.relations[targetFaction] = clampRel(rel + 30);
-            return { ok: true, reason: '', goldCost: 300, relationsDelta: 30, message: `向 ${targetFaction} 进贡` };
+            return { ok: true, reason: '', goldCost: 200, relationsDelta: 30, message: `向 ${targetFaction} 进贡` };
         }
         case 'marriage': {
-            if (ctx.gold < 500) {
+            if (ctx.gold < 350) {
                 return { ok: false, reason: '黄金不足', goldCost: 0, relationsDelta: 0, message: '' };
             }
             if (ctx.prestige < 60) {
@@ -106,7 +106,7 @@ export function performDiplo(
             if (!state.allies.includes(targetFaction)) {
                 state.allies.push(targetFaction);
             }
-            return { ok: true, reason: '', goldCost: 500, relationsDelta: 50, message: `与 ${targetFaction} 和亲结盟` };
+            return { ok: true, reason: '', goldCost: 350, relationsDelta: 50, message: `与 ${targetFaction} 和亲结盟` };
         }
         case 'threaten': {
             const prob = Math.min(0.95, 0.3 + ctx.armyPower / 100000 + ctx.prestige / 300);
