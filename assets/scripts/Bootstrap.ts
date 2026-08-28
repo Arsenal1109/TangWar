@@ -10,8 +10,11 @@ import { GovernmentPanel } from './ui/GovernmentPanel';
 import { MilitaryPanel } from './ui/MilitaryPanel';
 import { GeneralsPanel } from './ui/GeneralsPanel';
 import { DiplomacyPanel } from './ui/DiplomacyPanel';
+import { EventsPanel } from './ui/EventsPanel';
 import { CITIES } from './data/Cities';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
+import { createWorld, type WorldState } from './core/WorldState';
+import { runWorldTurn } from './core/TurnFlow';
 import type { CityState } from './core/ResourceSystem';
 
 const { ccclass } = _decorator;
@@ -20,6 +23,7 @@ const { ccclass } = _decorator;
 export interface GameEvents {
     'turn-advanced': { year: number; season: string; turn: number };
     'city-selected': { cityId: string };
+    'world-events': { title: string; messages: string[] };
 }
 
 @ccclass('Bootstrap')
@@ -27,10 +31,12 @@ export class Bootstrap extends Component {
     private bus = new EventBus<GameEvents>();
     private turns = new TurnManager(617, 2);
     private cityStates: CityState[] = [];
+    private world!: WorldState;
 
     onLoad(): void {
         view.setDesignResolutionSize(750, 1334, ResolutionPolicy.SHOW_ALL);
         this.cityStates = createCityStates();
+        this.world = createWorld(this.turns.year, this.cityStates);
         this.buildUi();
     }
 
@@ -76,8 +82,22 @@ export class Bootstrap extends Component {
         this.node.addChild(dip);
         dip.addComponent(DiplomacyPanel).init(this.bus);
 
-        // 回合推进：清空各城施政标记
+        // 天下大事推送
+        const ev = new Node('EventsPanel');
+        this.node.addChild(ev);
+        ev.addComponent(EventsPanel).init(this.bus);
+
+        // 回合推进：同步运行态、结算 AI/资源/事件/结局，清空各城施政标记
         this.bus.on('turn-advanced', (p) => {
+            this.world.year = this.turns.year;
+            this.world.seasonIndex = this.turns.seasonIndex;
+            const out = runWorldTurn(this.world);
+            if (out.log.length || out.eventNames.length) {
+                this.bus.emit('world-events', { title: `${this.turns.year} ${this.turns.getSeason()} 天下大事`, messages: out.log });
+            }
+            if (out.victory) {
+                console.log(`[结局] ${out.victory.grade}：${out.victory.message}`);
+            }
             resetTurnFlags(this.cityStates);
             console.log(`[回合] ${p.year} ${p.season} 第 ${p.turn} 回合`);
         });
