@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Color, UITransform, Graphics } from 'cc';
 import { TurnManager } from '../core/TurnManager';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
@@ -24,33 +24,41 @@ export class TopBar extends Component {
         bar.setContentSize(750, 120);
         this.node.setPosition(0, 667 - 60, 1);
 
-        // 底（M6 打磨时替换为墨色横幅视觉）
-        const bg = this.makeBar('top-bg', 750, 120);
-        this.node.addChild(bg);
+        // 墨色横幅：墨底 + 上下金线
+        this.makeBanner();
+    }
+
+    /** 墨色横幅：深墨底 + 上下金线（Graphics 绘制，后续可换贴图） */
+    private makeBanner(): void {
+        const g = this.node.addComponent(Graphics);
+        // 墨底
+        g.fillColor = InkTheme.ink;
+        g.rect(-375, -60, 750, 120);
+        g.fill();
+        // 上下金线
+        g.fillColor = InkTheme.gold;
+        g.rect(-375, 57, 750, 3);
+        g.fill();
+        g.rect(-375, -60, 750, 3);
+        g.fill();
 
         // 年代
         this.eraLabel = this.makeLabel(
             `${TurnManager.eraName(this.turns.year)} · ${this.turns.getSeason()}`,
-            32, InkTheme.goldText, 30, 60
+            32, InkTheme.goldText, 30, 40
         );
         this.node.addChild(this.eraLabel.node);
 
         // 势力
-        const fac = this.makeLabel('大唐 · 李渊', 24, InkTheme.paperText, 30, 0);
+        const fac = this.makeLabel('大唐 · 李渊', 24, InkTheme.paperText, 30, -6);
         this.node.addChild(fac.node);
 
         // 回合按钮
         const btnNode = new Node('NextTurn');
         const btn = btnNode.addComponent(NextTurnButton);
         btn.init(this.turns, this.bus);
-        btnNode.setPosition(360, -30, 1);
+        btnNode.setPosition(360, -20, 1);
         this.node.addChild(btnNode);
-    }
-
-    private makeBar(name: string, w: number, h: number): Node {
-        const n = new Node(name);
-        n.addComponent(UITransform).setContentSize(w, h);
-        return n;
     }
 
     private makeLabel(text: string, size: number, color: Color, x: number, y: number): Label {
