@@ -167,6 +167,7 @@ export class WarCouncilScreen extends Component {
     private eraLabel!: Label;
     private resourceLabel!: Label;
     private toastLabel!: Label;
+    private toastAccent: Node | null = null;
     private reportPanel!: Node;
     private reportBadge!: Label;
     private reportBody!: Node;
@@ -181,6 +182,8 @@ export class WarCouncilScreen extends Component {
     private orderButton!: Node;
     private holdFill!: Node;
     private holdLabel!: Label;
+    private orderGlow: Node | null = null;
+    private orderGlowOpacity: UIOpacity | null = null;
     private holdTimer = 0;
     private holding = false;
     private committed = false;
@@ -267,6 +270,7 @@ export class WarCouncilScreen extends Component {
             sprite.spriteFrame = frame;
         });
         this.rect(this.node, 'MapShade', this.width, this.height, new Color(0, 0, 0, 52), 0, 0);
+        this.buildCloudLayer();
         this.routeLayer = this.container(this.node, 'RouteLayer', this.width, this.height, 1);
         this.radialLayer = this.container(this.node, 'MapCommandLayer', this.mapWidth, this.height - 40, 2);
         this.radialLayer.setPosition(-97, -20, 2);
@@ -475,6 +479,7 @@ export class WarCouncilScreen extends Component {
         this.orderButton.on(Node.EventType.TOUCH_START, () => this.onHoldStart(), this);
         this.orderButton.on(Node.EventType.TOUCH_END, () => this.onHoldEnd(), this);
         this.orderButton.on(Node.EventType.TOUCH_CANCEL, () => this.onHoldEnd(), this);
+        this.buildOrderGlow(panelH);
         this.button(this.reportPanel, 'Withdraw', '撤军', -69, -panelH / 2 + 49, 48, 30, () => this.selectCouncil('defend'));
         this.button(this.reportPanel, 'Accelerate', '加速', 69, -panelH / 2 + 49, 48, 30, () => this.showToast('急行军：预计提前抵达，但粮耗增加'));
         this.button(this.reportPanel, 'RailSettings', '设', 78, panelH / 2 - 14, 24, 22, () => this.openPage('settings'));
@@ -497,6 +502,7 @@ export class WarCouncilScreen extends Component {
             card.on(Node.EventType.TOUCH_END, () => this.selectCouncil(option.key), this);
             this.pressable(card);
             this.councilNodes.set(option.key, card);
+            if (selected) this.sweepHighlight(card, 178, 48);
         });
     }
 
@@ -532,6 +538,7 @@ export class WarCouncilScreen extends Component {
         const toast = this.panel(this.node, 'Toast', this.mapWidth - 20, 27, new Color(16, 15, 13, 238), -this.width / 2 + this.mapWidth / 2, -this.height / 2 + 99, T.radius.control, C.bronzeSoft);
         this.toastNode = toast;
         this.toastLabel = this.label(toast, '军议已就绪', 13, C.paper, 0, 0, this.mapWidth - 42, 22, true);
+        this.toastAccent = this.rect(toast, 'ToastAccent', 6, 16, C.gold, -this.mapWidth / 2 + 16, 0, 3);
         toast.addComponent(UIOpacity).opacity = 0;
     }
 
@@ -613,7 +620,7 @@ export class WarCouncilScreen extends Component {
             card.on(Node.EventType.TOUCH_END, () => {
                 const result = applyPolicy(city, policy.id);
                 this.refreshHeader();
-                this.showToast(result.ok ? `${city.name}施行「${policy.name}」成功` : result.reason);
+                this.showToast(result.ok ? `${city.name}施行「${policy.name}」成功` : result.reason, result.ok ? 'good' : 'bad');
                 this.renderPageAgain('cities');
             }, this);
             this.pressable(card);
@@ -634,7 +641,7 @@ export class WarCouncilScreen extends Component {
             this.label(row, `统${general.stats.command} 谋${general.stats.strategy} 勇${general.stats.valor}`, 11, C.muted, 30, 0, 170, 20);
             row.on(Node.EventType.TOUCH_END, () => {
                 city.generalId = general.id;
-                this.showToast(`${general.name}已任命为${city.name}守将`);
+                this.showToast(`${general.name}已任命为${city.name}守将`, 'good');
                 this.renderPageAgain('army');
             }, this);
             this.pressable(row);
@@ -653,7 +660,7 @@ export class WarCouncilScreen extends Component {
         card.on(Node.EventType.TOUCH_END, () => {
             const result = recruit(city, type, 1);
             this.refreshHeader();
-            this.showToast(result.ok ? `${city.name}新募${troop.name}一千` : result.reason);
+            this.showToast(result.ok ? `${city.name}新募${troop.name}一千` : result.reason, result.ok ? 'good' : 'bad');
             this.renderPageAgain('army');
         }, this);
         this.pressable(card);
@@ -744,7 +751,7 @@ export class WarCouncilScreen extends Component {
         this.entrance(guide, 3);
         this.button(parent, 'ManualSave', '立即保存', 0, -102, 150, 34, () => {
             this.bus.emit('save-requested', {});
-            this.showToast('进度已保存');
+            this.showToast('进度已保存', 'good');
         });
     }
 
@@ -762,6 +769,11 @@ export class WarCouncilScreen extends Component {
         this.committed = false;
         this.holdTimer = 0;
         this.holdFill.setScale(0.01, 0.01, 1);
+        if (this.orderGlow) {
+            Tween.stopAllByTarget(this.orderGlowOpacity!);
+            tween(this.orderGlowOpacity!).to(0.16, { opacity: 225 }).start();
+            tween(this.orderGlow).to(0.2, { scale: new Vec3(1.16, 1.16, 1) }, { easing: T.ease.out }).start();
+        }
     }
 
     private onHoldEnd(): void {
@@ -771,6 +783,7 @@ export class WarCouncilScreen extends Component {
             this.holdTimer = 0;
             this.holdFill.setScale(0.01, 0.01, 1);
             this.holdLabel.string = '按住\n传令';
+            this.restoreOrderGlow();
             if (attempted) this.showToast('继续按住，待印信填满后军令才会发出');
         }
     }
@@ -780,7 +793,7 @@ export class WarCouncilScreen extends Component {
         const option = this.currentOption();
         const city = this.states.find((item) => item.id === 'taiyuan') ?? this.selectedCity();
         if (city.food < Math.abs(option.food)) {
-            this.showToast('粮草不足，军令无法下达');
+            this.showToast('粮草不足，军令无法下达', 'bad');
             this.resetOrderButton();
             return;
         }
@@ -820,7 +833,7 @@ export class WarCouncilScreen extends Component {
             this.bus.emit('turn-advanced', { year: this.turns.year, season: this.turns.getSeason(), turn: this.turns.getTurnNumber() });
             this.refreshReport();
             this.refreshHeader();
-            this.showToast(`${outcome.title} · 已推进至${this.turns.getSeason()}`);
+            this.showToast(`${outcome.title} · 已推进至${this.turns.getSeason()}`, outcome.tone);
             this.flashRoute();
             this.resetOrderButton();
         }));
@@ -831,6 +844,7 @@ export class WarCouncilScreen extends Component {
         this.holdTimer = 0;
         this.holdFill.setScale(0.01, 0.01, 1);
         this.holdLabel.string = '按住\n传令';
+        this.restoreOrderGlow();
         tween(this.orderButton).delay(0.35).call(() => { this.committed = false; }).start();
     }
 
@@ -844,19 +858,19 @@ export class WarCouncilScreen extends Component {
         this.reports.unshift({ title: '谣言已散布', body: result.ok ? `${target.name}民心动摇。` : result.reason, tone: result.ok ? 'good' : 'bad' });
         this.reportCount += 1;
         this.refreshHeader();
-        this.showToast(result.ok ? `计策成功：${target.name}民心下降` : result.reason);
+        this.showToast(result.ok ? `计策成功：${target.name}民心下降` : result.reason, result.ok ? 'good' : 'bad');
         this.renderPageAgain('strategy');
     }
 
     private executePlan(name: string, cost: number, damage: number): void {
         const source = this.states.find((city) => city.faction === 'tang');
-        if (!source || source.gold < cost) return this.showToast('黄金不足');
+        if (!source || source.gold < cost) return this.showToast('黄金不足', 'bad');
         source.gold -= cost;
         this.enemyStrength = Math.max(2400, this.enemyStrength - damage);
         this.reports.unshift({ title: `${name}成功`, body: `井陉守军削弱 ${damage.toLocaleString()}，新的战机已经出现。`, tone: 'good' });
         this.reportCount += 1;
         this.refreshHeader();
-        this.showToast(`${name}成功 · 敌军-${damage.toLocaleString()}`);
+        this.showToast(`${name}成功 · 敌军-${damage.toLocaleString()}`, 'good');
         this.renderPageAgain('strategy');
     }
 
@@ -866,7 +880,7 @@ export class WarCouncilScreen extends Component {
         this.reports.unshift({ title: `使者赴${factionName}`, body: result.ok ? `${factionName}关系改善。` : result.reason, tone: result.ok ? 'good' : 'bad' });
         this.reportCount += 1;
         this.refreshHeader();
-        this.showToast(result.ok ? `${factionName}关系 +${result.relationsDelta}` : result.reason);
+        this.showToast(result.ok ? `${factionName}关系 +${result.relationsDelta}` : result.reason, result.ok ? 'good' : 'bad');
         this.renderPageAgain('diplomacy');
     }
 
@@ -951,9 +965,18 @@ export class WarCouncilScreen extends Component {
     private toneColor(tone: ReportEntry['tone']): Color { return tone === 'good' ? C.green : tone === 'bad' ? C.red : C.paper; }
     private compact(value: number): string { return value >= 10000 ? `${(value / 10000).toFixed(2)}万` : value.toLocaleString(); }
 
-    private showToast(text: string): void {
+    private showToast(text: string, tone: ReportEntry['tone'] = 'normal'): void {
         this.toastNode.active = true;
         this.toastLabel.string = text;
+        const toneColor = tone === 'good' ? C.green : tone === 'bad' ? C.red : C.paper;
+        this.toastLabel.color = toneColor;
+        const accentG = this.toastAccent?.getComponent(Graphics);
+        if (accentG) {
+            accentG.clear();
+            accentG.fillColor = tone === 'good' ? C.green : tone === 'bad' ? C.red : C.gold;
+            accentG.roundRect(-3, -8, 6, 16, 3);
+            accentG.fill();
+        }
         this.toastNode.setPosition(
             this.page === 'world' ? -this.width / 2 + this.mapWidth / 2 : 0,
             this.page === 'world' ? -this.height / 2 + 99 : -this.height / 2 + 18,
@@ -1406,6 +1429,65 @@ export class WarCouncilScreen extends Component {
         this.fillRound(g, -hw - 3.5, -hh - 5.5, width + 7, height + 9, radius + 3);
         g.fillColor = T.shadowNear;
         this.fillRound(g, -hw - 1.5, -hh - 2.5, width + 3, height + 4, radius + 1.5);
+    }
+
+    /** 传令印信背后的烛光暖晕：置于按钮之下，常年轻微呼吸；长按传令时被 onHoldStart 增亮。 */
+    private buildOrderGlow(panelH: number): void {
+        this.orderGlow = this.image(this.reportPanel, 'OrderGlow', 'redesign/effects/glow-warm/texture', 150, 150, 0, -panelH / 2 + 54, 2);
+        this.orderGlow.setSiblingIndex(this.orderButton.getSiblingIndex());
+        this.orderGlowOpacity = this.orderGlow.addComponent(UIOpacity);
+        this.startGlowFlicker();
+    }
+
+    private startGlowFlicker(): void {
+        if (!this.orderGlowOpacity) return;
+        Tween.stopAllByTarget(this.orderGlowOpacity);
+        this.orderGlowOpacity.opacity = 80;
+        tween(this.orderGlowOpacity)
+            .to(0.16, { opacity: 96 }).to(0.12, { opacity: 140 }).to(0.2, { opacity: 108 })
+            .to(0.14, { opacity: 168 }).to(0.18, { opacity: 122 })
+            .union().repeatForever().start();
+        tween(this.orderGlow!)
+            .to(0.5, { scale: new Vec3(1.05, 1.05, 1) }).to(0.5, { scale: Vec3.ONE })
+            .union().repeatForever().start();
+    }
+
+    /** 松开/结算后把烛光从高亮态复原为呼吸态。 */
+    private restoreOrderGlow(): void {
+        if (!this.orderGlow) return;
+        Tween.stopAllByTarget(this.orderGlow);
+        tween(this.orderGlow).to(0.25, { scale: Vec3.ONE }, { easing: T.ease.out }).start();
+        this.startGlowFlicker();
+    }
+
+    /** 地图云影：半透明云团缓速漂移、错位起伏，赋予沙盘灵动。 */
+    private buildCloudLayer(): void {
+        this.driftCloud('云影_1', -72, 72, 250, 96, 0.26, 42);
+        this.driftCloud('云影_2', 92, 18, 196, 76, 0.36, 30);
+    }
+
+    private driftCloud(name: string, x: number, y: number, width: number, height: number, dur: number, baseOpacity: number): void {
+        const cloud = this.image(this.node, name, 'redesign/effects/cloud-soft/texture', width, height, x, y, 1);
+        const op = cloud.addComponent(UIOpacity);
+        op.opacity = baseOpacity;
+        const travel = 48;
+        tween(cloud)
+            .to(dur, { position: new Vec3(x + travel, y + 7, 1) }, { easing: 'sineInOut' })
+            .to(dur, { position: new Vec3(x, y, 1) }, { easing: 'sineInOut' })
+            .union().repeatForever().start();
+        tween(op)
+            .to(dur * 1.4, { opacity: baseOpacity + 18 }).to(dur * 1.4, { opacity: baseOpacity })
+            .union().repeatForever().start();
+    }
+
+    /** 选中扫光：金色软光条自左向右扫过卡片一次后销毁（边缘软渐变，无需裁剪）。 */
+    private sweepHighlight(node: Node, width: number, height: number): void {
+        const bar = this.image(node, 'SelectSweep', 'redesign/effects/sweep-gold/texture', 84, height, -width / 2 - 60, 0, 1);
+        const op = bar.addComponent(UIOpacity);
+        op.opacity = 0;
+        tween(op).delay(0.04).to(0.2, { opacity: 200 }).to(0.16, { opacity: 0 }).start();
+        tween(bar).delay(0.04).to(0.34, { position: new Vec3(width / 2 + 60, 0, 1) }, { easing: T.ease.out })
+            .call(() => { if (bar.isValid) bar.destroy(); }).start();
     }
 
     /** 立体面板：在单个 Graphics 内按绘制顺序叠软阴影、填充、顶部光泽与内外双描边，视觉分层不增加 draw call。 */
