@@ -58,6 +58,7 @@ MapShade / DialogueShade / BattleShade / OpeningShade / GuideShade*（全屏遮�
 - draw call：面板仍为每节点一个 Graphics（阴影/光泽/描边在同一 Graphics 内按命令顺序叠加），与原先持平。
 
 ## 编辑器视觉复核清单（待做）
+> **复核入口见整合清单**：`docs/visual-acceptance-checklist.md`（第一→第三层累计，按页面分级）。本节为当时草稿，最终以整合清单为准。
 
 1. 主战页：顶栏/唐印/战报入口/太原卡/军议栏/传令印/导航有描边与阴影层次，光泽带不刺眼。
 2. 任一系统页：打开时卡片级联上浮淡入；施政/募兵后刷新不再重播级联。
