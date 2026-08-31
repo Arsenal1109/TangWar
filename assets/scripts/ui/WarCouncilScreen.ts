@@ -165,7 +165,7 @@ export class WarCouncilScreen extends Component {
         { title: '河东乡勇请附', body: '若先安抚地方，可提升民心并获得兵源。', tone: 'good' }
     ];
     private eraLabel!: Label;
-    private resourceLabel!: Label;
+    private resNumbers: Record<'food' | 'gold' | 'army' | 'morale', Label> = {} as Record<'food' | 'gold' | 'army' | 'morale', Label>;
     private toastLabel!: Label;
     private toastAccent: Node | null = null;
     private reportPanel!: Node;
@@ -290,7 +290,22 @@ export class WarCouncilScreen extends Component {
         this.label(seal, '唐', 18, C.paper, 0, 0, 30, 28, true);
         this.eraLabel = this.label(header, '', 17, C.gold, -this.width / 2 + 126, 7, 154, 24, false, HorizontalTextAlignment.LEFT);
         this.label(header, '唐 · 李渊', 13, C.paper, -this.width / 2 + 126, -10, 154, 20, false, HorizontalTextAlignment.LEFT);
-        this.resourceLabel = this.label(header, '', 16, C.gold, -40, 0, 360, 30, true);
+        this.buildResourceStrip(header);
+    }
+
+    /** 顶栏资源条：四项「印章字符 + 色值数字」格子，替代纯文本，提升信息层级（保持数字滚动）。 */
+    private buildResourceStrip(header: Node): void {
+        const cells: Array<{ key: 'food' | 'gold' | 'army' | 'morale'; char: string; color: Color; x: number }> = [
+            { key: 'food', char: '粮', color: C.gold, x: -126 },
+            { key: 'gold', char: '金', color: C.gold, x: -42 },
+            { key: 'army', char: '兵', color: C.paper, x: 42 },
+            { key: 'morale', char: '心', color: C.green, x: 126 }
+        ];
+        for (const cell of cells) {
+            const seal = this.panel(header, `ResSeal_${cell.key}`, 20, 20, C.panelSoft, cell.x - 32, 0, 5, C.bronzeSoft);
+            this.label(seal, cell.char, 12, C.gold, 0, 0, 18, 18, true);
+            this.resNumbers[cell.key] = this.label(header, '0', 14, cell.color, cell.x + 10, 0, 52, 24, true);
+        }
     }
 
     private buildWorldControls(): void {
@@ -897,7 +912,10 @@ export class WarCouncilScreen extends Component {
         const army = own.reduce((sum, city) => sum + city.army, 0);
         const morale = own.length ? Math.round(own.reduce((sum, city) => sum + city.morale, 0) / own.length) : 0;
         const apply = (f: number, g: number, a: number, m: number) => {
-            this.resourceLabel.string = `粮 ${this.compact(Math.round(f))}     金 ${this.compact(Math.round(g))}     兵 ${this.compact(Math.round(a))}     民心 ${Math.round(m)}`;
+            this.resNumbers.food.string = this.compact(Math.round(f));
+            this.resNumbers.gold.string = this.compact(Math.round(g));
+            this.resNumbers.army.string = this.compact(Math.round(a));
+            this.resNumbers.morale.string = String(Math.round(m));
         };
         const from = this.lastHeader;
         this.lastHeader = { food, gold, army, morale };
