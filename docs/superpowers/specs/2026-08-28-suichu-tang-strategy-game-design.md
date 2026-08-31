@@ -159,8 +159,8 @@
 - 模块划分（现状）：
   - `data/`：势力、城池、将领、施策、兵种、历史事件数据表（TypeScript 常量）
   - `core/`：游戏状态、回合管理、资源结算、施政 / 设施、军事（六兵种 / 募兵 / 行军 / 战斗结算）、将领、外交、谋略、群雄 AI、历史事件、胜利判定、存档序列化（全部引擎无关、可单测）
-  - `ui/`：`WarCouncilScreen` 军帐主战屏（沙盘战图、军议、作战进程、七页面、战斗过场、开场引导、设置）、`SoundManager` 音频、`SaveManager` 存档桥接；`TopBar` / `BottomNav` / `CitySheet` / 五功能面板为 v1 竖屏遗产，v2.0 起不再装配（代码暂留待清理）
-  - `map/`：v1 舆图渲染与相机，v2.0 起由军帐主战屏内置沙盘取代（保留未装配）
+  - `ui/`：`WarCouncilScreen` 军帐主战屏（沙盘战图、军议、作战进程、七页面、战斗过场、开场引导、设置）、`SoundManager` 音频、`SaveManager` 存档桥接；v1 竖屏组件（`TopBar` / `BottomNav` / `CitySheet` / 五功能面板及 `InkTheme` / `PanelChrome` / `NextTurnButton` 辅助件）已清理移除
+  - `map/`：v1 舆图渲染与相机，已由军帐主战屏内置沙盘取代并移除
 - 音频：`assets/resources/audio/bgm-council.ogg` 军帐 BGM（循环、音量 0.32，首次触摸手势解锁后播放）+ 命名音效 `resources/sounds/*`（缺失时优雅降级为日志）；设置页「军帐音乐」开关经 `audio-setting` 事件联动
 - 存档：本地 JSON（`sys.localStorage`，键 `tangwar_save_v1`，版本守卫）；回合推进自动存档 + 设置页手动存档（`save-requested`）
 - 测试：`tests/` 纯逻辑层（node + vitest），17 个文件 72 用例

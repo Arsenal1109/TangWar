@@ -62,7 +62,6 @@ design-qa.md                   # 新增：横屏军帐双屏设计 QA 记录（�
 
 ## 自审 / 遗留
 
-- **待清理**：`Bootstrap.ts` 中 v1 组件的 import 仍在（未装配）；`GameEvents['panel-nav']` 事件类型已无发布 / 订阅方，属残留声明
-- **map/ 目录**：`MapRenderer` / `MapCamera` 由军帐主战屏内置沙盘取代，保留未装配
+- **已清理**：v1 组件（`TopBar` / `BottomNav` / `CitySheet` / 五功能面板及 `NextTurnButton` / `PanelChrome` / `InkTheme`）与 `map/`（`MapRenderer` / `MapCamera`）文件已整体移除；`Bootstrap` 的死 import、`GameEvents` 残留事件声明（`panel-nav` / `panel-close`）与未调用的 `buildBackdrop` / `buildMapChrome` 一并删除；清理后 17 文件 72 用例全部通过
 - **字体**：系统 serif 族为兼容性取舍（QA P3），后续如需刻本字体气质需自带字库
 - **战图差异**：源图为冬季数值与更写实地貌，实现读取当前存档数值并使用可交互沙盘，不做逐像素复制（QA P3）

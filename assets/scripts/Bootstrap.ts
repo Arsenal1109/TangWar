@@ -1,21 +1,9 @@
 import { _decorator, Component, Node, Camera, Canvas, Color, Layers, view, ResolutionPolicy, Label, UITransform, Graphics } from 'cc';
 import { TurnManager } from './core/TurnManager';
 import { EventBus } from './core/EventBus';
-import { MapRenderer } from './map/MapRenderer';
-import { MapCamera } from './map/MapCamera';
-import { TopBar } from './ui/TopBar';
-import { BottomNav } from './ui/BottomNav';
-import { CitySheet } from './ui/CitySheet';
-import { GovernmentPanel } from './ui/GovernmentPanel';
-import { MilitaryPanel } from './ui/MilitaryPanel';
-import { GeneralsPanel } from './ui/GeneralsPanel';
-import { DiplomacyPanel } from './ui/DiplomacyPanel';
-import { StrategyPanel } from './ui/StrategyPanel';
-import { EventsPanel } from './ui/EventsPanel';
 import { SaveManager } from './ui/SaveManager';
 import { SoundManager } from './ui/SoundManager';
 import { WarCouncilScreen } from './ui/WarCouncilScreen';
-import { CITIES } from './data/Cities';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
 import { createWorld, type WorldState } from './core/WorldState';
 import { runWorldTurn } from './core/TurnFlow';
@@ -28,8 +16,6 @@ export interface GameEvents {
     'turn-advanced': { year: number; season: string; turn: number };
     'city-selected': { cityId: string };
     'world-events': { title: string; messages: string[] };
-    'panel-nav': { key: string };
-    'panel-close': Record<string, never>;
     'save-requested': Record<string, never>;
     'audio-setting': { music: boolean };
 }
@@ -194,90 +180,4 @@ export class Bootstrap extends Component {
         });
     }
 
-    private buildBackdrop(): void {
-        const visibleHeight = view.getVisibleSize().height;
-        const backdrop = new Node('PaperBackdrop');
-        backdrop.layer = Layers.Enum.UI_2D;
-        backdrop.addComponent(UITransform).setContentSize(750, visibleHeight);
-        const g = backdrop.addComponent(Graphics);
-        g.fillColor = new Color(238, 224, 184, 255);
-        g.rect(-375, -visibleHeight / 2, 750, visibleHeight);
-        g.fill();
-        g.strokeColor = new Color(140, 110, 60, 18);
-        g.lineWidth = 1;
-        for (let y = -visibleHeight / 2; y < visibleHeight / 2; y += 8) {
-            g.moveTo(-375, y);
-            g.lineTo(375, y);
-        }
-        for (let x = -370; x < 375; x += 10) {
-            g.moveTo(x, -visibleHeight / 2);
-            g.lineTo(x, visibleHeight / 2);
-        }
-        g.stroke();
-        this.uiRoot.addChild(backdrop);
-    }
-
-    private buildMapChrome(): void {
-        const visibleHeight = view.getVisibleSize().height;
-        const halfH = visibleHeight / 2;
-        const hud = new Node('MapChrome');
-        hud.layer = Layers.Enum.UI_2D;
-        // HUD 容器本身不占触控面积，避免全屏 UITransform 截获地图点触。
-        hud.addComponent(UITransform).setContentSize(0, 0);
-        hud.setPosition(0, 0, 2);
-        this.uiRoot.addChild(hud);
-
-        const title = new Node('MapTitle');
-        title.addComponent(UITransform).setContentSize(330, 56);
-        const titleLabel = title.addComponent(Label);
-        titleLabel.string = '◆  天 下 舆 图';
-        titleLabel.fontSize = 29;
-        titleLabel.lineHeight = 38;
-        titleLabel.color = new Color(74, 53, 22, 255);
-        titleLabel.useSystemFont = true;
-        title.setPosition(-205, halfH - 154, 1);
-        hud.addChild(title);
-
-        const underline = new Node('TitleRule');
-        underline.addComponent(UITransform).setContentSize(230, 3);
-        const ug = underline.addComponent(Graphics);
-        ug.fillColor = new Color(166, 58, 46, 210);
-        ug.rect(-115, -1, 230, 3);
-        ug.fill();
-        underline.setPosition(-250, halfH - 182, 1);
-        hud.addChild(underline);
-
-        const legend = new Node('LegendButton');
-        legend.addComponent(UITransform).setContentSize(76, 72);
-        const lg = legend.addComponent(Graphics);
-        lg.fillColor = new Color(250, 243, 222, 245);
-        lg.roundRect(-38, -36, 76, 72, 12);
-        lg.fill();
-        lg.strokeColor = new Color(160, 138, 82, 255);
-        lg.lineWidth = 2;
-        lg.roundRect(-38, -36, 76, 72, 12);
-        lg.stroke();
-        const legendText = new Node('LegendText');
-        legendText.addComponent(UITransform).setContentSize(68, 60);
-        const ll = legendText.addComponent(Label);
-        ll.string = '图例';
-        ll.fontSize = 23;
-        ll.lineHeight = 30;
-        ll.color = new Color(90, 58, 26, 255);
-        ll.useSystemFont = true;
-        legend.addChild(legendText);
-        legend.setPosition(320, halfH - 161, 1);
-        hud.addChild(legend);
-
-        const hint = new Node('MapHint');
-        hint.addComponent(UITransform).setContentSize(500, 40);
-        const hl = hint.addComponent(Label);
-        hl.string = '点触城池 · 查看详情';
-        hl.fontSize = 21;
-        hl.lineHeight = 28;
-        hl.color = new Color(122, 90, 48, 220);
-        hl.useSystemFont = true;
-        hint.setPosition(0, -halfH + 190, 1);
-        hud.addChild(hint);
-    }
 }
