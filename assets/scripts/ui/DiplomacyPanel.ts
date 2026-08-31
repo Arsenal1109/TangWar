@@ -1,10 +1,11 @@
-import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Color, UITransform, Graphics } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
 import { createDiplomacyState, performDiplo, type DiplomacyState } from '../core/Diplomacy';
 import type { CityState } from '../core/ResourceSystem';
 import { FACTIONS } from '../data/Factions';
 import { InkTheme } from './InkTheme';
+import { prepareBottomSheet } from './PanelChrome';
 
 const { ccclass } = _decorator;
 
@@ -46,10 +47,9 @@ export class DiplomacyPanel extends Component {
     }
 
     private build(): void {
-        this.node.addComponent(UITransform).setContentSize(700, 420);
-        this.node.setPosition(0, -667 + 260, 2);
-        this.titleLabel = this.makeLabel('外交', 38, InkTheme.darkText, 0, 170);
-        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -160);
+        prepareBottomSheet(this.node, 650, '外交与结盟', () => this.bus.emit('panel-close', {}));
+        this.titleLabel = this.makeLabel('外交', 34, InkTheme.darkText, 0, 210);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -250);
         this.listRoot = new Node('diplo-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -77,10 +77,10 @@ export class DiplomacyPanel extends Component {
             const rel = this.state.relations[f.id] ?? 0;
             const row = new Node(f.name);
             row.addComponent(UITransform).setContentSize(650, 54);
-            row.setPosition(0, 110 - i * 60, 1);
+            row.setPosition(0, 145 - i * 39, 1);
             const label = row.addComponent(Label);
             label.string = `${f.name} · 关系 ${rel} · 点触：进贡（耗 200 金）`;
-            label.fontSize = 20;
+            label.fontSize = 18;
             label.lineHeight = 26;
             label.color = InkTheme.darkText;
             label.useSystemFont = true;

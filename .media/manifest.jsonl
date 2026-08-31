@@ -1,0 +1,19 @@
+{"id":"bgm_001","type":"bgm","path":"assets/resources/audio/bgm-council.ogg","source":"existing","description":"bgm council","provenance":{"provider":"local","adopted":true}}
+{"id":"image_001","type":"image","path":"assets/resources/redesign/icons/council-defend.png","source":"existing","description":"council defend","provenance":{"provider":"local","adopted":true}}
+{"id":"image_002","type":"image","path":"assets/resources/redesign/icons/council-pacify.png","source":"existing","description":"council pacify","provenance":{"provider":"local","adopted":true}}
+{"id":"image_003","type":"image","path":"assets/resources/redesign/icons/council-raid.png","source":"existing","description":"council raid","provenance":{"provider":"local","adopted":true}}
+{"id":"image_004","type":"image","path":"assets/resources/redesign/icons/step-battle.png","source":"existing","description":"step battle","provenance":{"provider":"local","adopted":true}}
+{"id":"image_005","type":"image","path":"assets/resources/redesign/icons/step-event.png","source":"existing","description":"step event","provenance":{"provider":"local","adopted":true}}
+{"id":"image_006","type":"image","path":"assets/resources/redesign/icons/step-food.png","source":"existing","description":"step food","provenance":{"provider":"local","adopted":true}}
+{"id":"image_007","type":"image","path":"assets/resources/redesign/icons/step-march.png","source":"existing","description":"step march","provenance":{"provider":"local","adopted":true}}
+{"id":"image_008","type":"image","path":"assets/resources/redesign/icons/step-origin.png","source":"existing","description":"step origin","provenance":{"provider":"local","adopted":true}}
+{"id":"image_009","type":"image","path":"assets/resources/redesign/icons/step-target.png","source":"existing","description":"step target","provenance":{"provider":"local","adopted":true}}
+{"id":"image_010","type":"image","path":"assets/resources/redesign/icons/step-terrain.png","source":"existing","description":"step terrain","provenance":{"provider":"local","adopted":true}}
+{"id":"image_011","type":"image","path":"assets/resources/redesign/icons/step-travel.png","source":"existing","description":"step travel","provenance":{"provider":"local","adopted":true}}
+{"id":"image_012","type":"image","path":"assets/resources/redesign/icons/tool-city.png","source":"existing","description":"tool city","provenance":{"provider":"local","adopted":true}}
+{"id":"image_013","type":"image","path":"assets/resources/redesign/icons/tool-mark.png","source":"existing","description":"tool mark","provenance":{"provider":"local","adopted":true}}
+{"id":"image_014","type":"image","path":"assets/resources/redesign/icons/tool-power.png","source":"existing","description":"tool power","provenance":{"provider":"local","adopted":true}}
+{"id":"image_015","type":"image","path":"assets/resources/redesign/icons/tool-terrain.png","source":"existing","description":"tool terrain","provenance":{"provider":"local","adopted":true}}
+{"id":"image_016","type":"image","path":"assets/resources/redesign/li-shimin.png","source":"existing","description":"li shimin","provenance":{"provider":"local","adopted":true}}
+{"id":"image_017","type":"image","path":"assets/resources/redesign/war-map-landscape.png","source":"existing","description":"war map landscape","provenance":{"provider":"local","adopted":true}}
+{"id":"image_018","type":"image","path":"assets/resources/redesign/war-map.png","source":"existing","description":"war map","provenance":{"provider":"local","adopted":true}}

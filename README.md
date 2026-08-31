@@ -3,8 +3,8 @@
 隋末唐初（617—626）策略手游（单机）。玩家扮演李唐（李渊 → 李世民），在群雄逐鹿中经营内政、运筹帷幄、统一天下。
 
 - 引擎：Cocos Creator 3.8（TypeScript）
-- 目标平台：Android 原生 APP（竖屏）
-- 美术：水墨古风界面 + 实用舆图 + 东方写实古风人物立绘
+- 目标平台：Android 原生 APP（横屏，双向自动旋转）
+- 美术：黑漆军帐界面 + 写实沙盘战图 + 东方历史人物立绘
 
 ## 运行
 
@@ -23,15 +23,26 @@ npm test
 
 单测覆盖：数据表完整性、回合推进、资源结算（粮草/黄金/民心/逃兵）。
 
+## Android Release 打包
+
+项目根目录执行：
+
+\`\`\`powershell
+.\build-apk.ps1
+\`\`\`
+
+脚本固定使用 \`D:\Gradle\gradle-8.11.1\bin\gradle.bat\`，不会调用会联网下载或选错版本的 Gradle Wrapper。
+
 ## 项目结构
 
 - `assets/scripts/data/`：势力、城池、将领数据表（引擎无关）
 - `assets/scripts/core/`：回合、资源结算、事件总线（引擎无关）
-- `assets/scripts/map/`：舆图渲染与交互（Graphics）
-- `assets/scripts/ui/`：顶部栏、底部导航、城池卡片
+- `assets/resources/redesign/`：新版沙盘战图与人物立绘资源
+- `assets/scripts/map/`：传统舆图渲染与交互（保留模块）
+- `assets/scripts/ui/WarCouncilScreen.ts`：军议、路线预演、传令、战报与动效主循环
 - `docs/superpowers/`：设计文档与实现计划
 
 ## 里程碑
 
-- M1 框架：工程、舆图、回合循环、点城池（当前）
-- M2 内政 → M3 军事 → M4 将领/外交/谋略 → M5 AI 与事件 → M6 打磨
+- 当前：横屏全域沙盘、三项军议、路线预演、城池/部队/计策/外交/情报完整页面、传令结算、动态战报与自动存档
+- 后续：扩充真实行军/战斗表现 → 历史事件分支 → 音频与字体资源 → 商店签名发布

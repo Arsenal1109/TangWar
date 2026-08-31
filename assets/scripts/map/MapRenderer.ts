@@ -72,8 +72,8 @@ export class MapRenderer extends Component {
     }
 
     private toLocal(x: number, y: number): { x: number; y: number } {
-        // viewBox(640x560) -> 节点坐标（中心对齐，2 倍缩放）
-        return { x: (x - VIEW_W / 2) * 2, y: (y - VIEW_H / 2) * 2 };
+        // SVG 设计稿的 Y 轴向下，Cocos UI 的 Y 轴向上，必须翻转后才能与原稿一致。
+        return { x: (x - VIEW_W / 2) * 2, y: (VIEW_H / 2 - y) * 2 };
     }
 
     private drawAll(): void {

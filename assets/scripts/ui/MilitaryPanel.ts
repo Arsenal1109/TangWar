@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Color, UITransform, Graphics } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
 import type { CityState } from '../core/ResourceSystem';
@@ -6,6 +6,7 @@ import { TROOP_ORDER, TROOPS } from '../data/Troops';
 import { recruit } from '../core/Military';
 import { findCity } from '../core/CityRegistry';
 import { InkTheme } from './InkTheme';
+import { prepareBottomSheet } from './PanelChrome';
 
 const { ccclass } = _decorator;
 
@@ -31,10 +32,9 @@ export class MilitaryPanel extends Component {
     }
 
     private build(): void {
-        this.node.addComponent(UITransform).setContentSize(700, 380);
-        this.node.setPosition(0, -667 + 250, 2);
-        this.titleLabel = this.makeLabel('军事 · 募兵', 38, InkTheme.darkText, 0, 140);
-        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -135);
+        prepareBottomSheet(this.node, 650, '军事动向 · 点触兵种募兵', () => this.bus.emit('panel-close', {}));
+        this.titleLabel = this.makeLabel('军事 · 募兵', 34, InkTheme.darkText, 0, 210);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -250);
         this.listRoot = new Node('recruit-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -65,7 +65,7 @@ export class MilitaryPanel extends Component {
             const def = TROOPS[t];
             const row = new Node(def.name);
             row.addComponent(UITransform).setContentSize(650, 52);
-            row.setPosition(0, 80 - i * 58, 1);
+            row.setPosition(0, 125 - i * 60, 1);
             const label = row.addComponent(Label);
             label.string = `${def.name}（攻${def.atk}/防${def.def}/速${def.speed}）耗金${def.cost}/千 · 现有 ${city.troops[t]}`;
             label.fontSize = 21;

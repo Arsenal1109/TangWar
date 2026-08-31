@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Color, UITransform, Graphics } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
 import type { CityState } from '../core/ResourceSystem';
@@ -6,6 +6,7 @@ import { POLICIES } from '../data/Policies';
 import { applyPolicy } from '../core/PolicySystem';
 import { findCity } from '../core/CityRegistry';
 import { InkTheme } from './InkTheme';
+import { prepareBottomSheet } from './PanelChrome';
 
 const { ccclass } = _decorator;
 
@@ -32,12 +33,11 @@ export class GovernmentPanel extends Component {
     }
 
     private build(): void {
-        this.node.addComponent(UITransform).setContentSize(700, 520);
-        this.node.setPosition(0, -667 + 300, 2);
+        prepareBottomSheet(this.node, 650, '内政施策 · 每季一项', () => this.bus.emit('panel-close', {}));
 
-        this.titleLabel = this.makeLabel('内政', 40, InkTheme.darkText, 0, 220);
-        this.resLabel = this.makeLabel('', 24, InkTheme.labelText, 0, 160);
-        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -150);
+        this.titleLabel = this.makeLabel('内政', 34, InkTheme.darkText, 0, 210);
+        this.resLabel = this.makeLabel('', 22, InkTheme.labelText, 0, 158);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -250);
         this.listRoot = new Node('policy-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -69,15 +69,29 @@ export class GovernmentPanel extends Component {
         this.listRoot.removeAllChildren();
         POLICIES.forEach((p, i) => {
             const row = new Node(p.name);
-            row.addComponent(UITransform).setContentSize(650, 56);
-            row.setPosition(0, 100 - i * 62, 1);
-            const label = row.addComponent(Label);
+            row.addComponent(UITransform).setContentSize(650, 72);
+            row.setPosition(0, 90 - i * 78, 1);
+            const cardNode = new Node('CardBg');
+            cardNode.addComponent(UITransform).setContentSize(650, 68);
+            const card = cardNode.addComponent(Graphics);
+            card.fillColor = new Color(253, 248, 232, 235);
+            card.roundRect(-325, -34, 650, 68, 10);
+            card.fill();
+            card.strokeColor = new Color(179, 154, 98, 210);
+            card.lineWidth = 1.5;
+            card.roundRect(-325, -34, 650, 68, 10);
+            card.stroke();
+            row.addChild(cardNode);
+            const labelNode = new Node('PolicyLabel');
+            labelNode.addComponent(UITransform).setContentSize(620, 58);
+            const label = labelNode.addComponent(Label);
             label.string = `${p.name} — ${p.desc}`;
-            label.fontSize = 22;
+            label.fontSize = 21;
             label.lineHeight = 28;
             label.color = InkTheme.darkText;
             label.useSystemFont = true;
             label.overflow = 3; // OVERFLOW_SHRINK
+            row.addChild(labelNode);
             row.on(Node.EventType.TOUCH_END, () => {
                 const r = applyPolicy(city, p.id);
                 this.feedbackLabel.color = r.ok ? InkTheme.ink : InkTheme.cinnabar;

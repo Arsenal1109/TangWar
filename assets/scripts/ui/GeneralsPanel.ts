@@ -1,10 +1,11 @@
-import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
+import { _decorator, Component, Node, Label, Color, UITransform, Graphics } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
 import { createGeneralStates, assignGeneral, type GeneralState } from '../core/GeneralSystem';
 import { findCity } from '../core/CityRegistry';
 import type { CityState } from '../core/ResourceSystem';
 import { InkTheme } from './InkTheme';
+import { prepareBottomSheet } from './PanelChrome';
 
 const { ccclass } = _decorator;
 
@@ -31,10 +32,9 @@ export class GeneralsPanel extends Component {
     }
 
     private build(): void {
-        this.node.addComponent(UITransform).setContentSize(700, 420);
-        this.node.setPosition(0, -667 + 260, 2);
-        this.titleLabel = this.makeLabel('将领', 38, InkTheme.darkText, 0, 170);
-        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -160);
+        prepareBottomSheet(this.node, 650, '麾下名臣良将', () => this.bus.emit('panel-close', {}));
+        this.titleLabel = this.makeLabel('将领', 34, InkTheme.darkText, 0, 210);
+        this.feedbackLabel = this.makeLabel('', 22, InkTheme.cinnabar, 0, -250);
         this.listRoot = new Node('general-list');
         this.node.addChild(this.listRoot);
         this.refresh();
@@ -62,7 +62,7 @@ export class GeneralsPanel extends Component {
             const s = g.stats;
             const row = new Node(g.name);
             row.addComponent(UITransform).setContentSize(650, 54);
-            row.setPosition(0, 110 - i * 60, 1);
+            row.setPosition(0, 125 - i * 64, 1);
             const label = row.addComponent(Label);
             label.string = `${g.name}（${g.title}）统${s.command}/政${s.politics}/谋${s.strategy}/勇${s.valor}/威${s.prestige} 忠${g.loyalty} ${g.assignment ? `· 已任${g.assignment.role === 'governor' ? '守将' : '统军'}@${g.assignment.cityId}` : ''}`;
             label.fontSize = 20;
