@@ -1,4 +1,4 @@
-import { _decorator, Component, resources, AudioClip, AudioSource } from 'cc';
+import { _decorator, AudioClip, AudioSource, Component, input, Input, resources } from 'cc';
 import type { EventBus } from '../core/EventBus';
 import type { GameEvents } from '../Bootstrap';
 
@@ -13,24 +13,67 @@ const SFX_MAP: Record<string, string> = {
 // 音效管理：加载命名音频并缓存到 AudioSource 播放；无资源/静音时打日志降级
 @ccclass('SoundManager')
 export class SoundManager extends Component {
-    private enabled = true;
-    private source: AudioSource | null = null;
+    private sfxEnabled = true;
+    private musicEnabled = true;
+    private sfxSource: AudioSource | null = null;
+    private bgmSource: AudioSource | null = null;
+    private bgmReady = false;
+    private gestureReceived = false;
     private clips = new Map<string, AudioClip | null>();
 
     init(bus: EventBus<GameEvents>): this {
-        this.source = this.node.addComponent(AudioSource);
+        this.sfxSource = this.node.addComponent(AudioSource);
+        this.bgmSource = this.node.addComponent(AudioSource);
+        this.bgmSource.loop = true;
+        this.bgmSource.volume = 0.32;
         bus.on('turn-advanced', () => this.play('turn-advanced'));
         bus.on('city-selected', () => this.play('city-selected'));
+        bus.on('audio-setting', ({ music }) => this.setMusicEnabled(music));
+        input.once(Input.EventType.TOUCH_START, this.unlockAudio, this);
+        input.once(Input.EventType.MOUSE_DOWN, this.unlockAudio, this);
+        this.loadBgm();
         return this;
     }
 
     toggle(): boolean {
-        this.enabled = !this.enabled;
-        return this.enabled;
+        this.sfxEnabled = !this.sfxEnabled;
+        return this.sfxEnabled;
+    }
+
+    private unlockAudio(): void {
+        this.gestureReceived = true;
+        this.tryStartBgm();
+    }
+
+    private loadBgm(): void {
+        resources.load('audio/bgm-council', AudioClip, (err, clip) => {
+            if (err || !this.bgmSource) {
+                console.warn('[音乐] 军帐背景音乐加载失败', err);
+                return;
+            }
+            this.bgmSource.clip = clip;
+            this.bgmReady = true;
+            this.tryStartBgm();
+        });
+    }
+
+    private setMusicEnabled(enabled: boolean): void {
+        this.musicEnabled = enabled;
+        if (!this.bgmSource) return;
+        if (!enabled) {
+            this.bgmSource.stop();
+            return;
+        }
+        this.tryStartBgm();
+    }
+
+    private tryStartBgm(): void {
+        if (!this.musicEnabled || !this.bgmReady || !this.gestureReceived || !this.bgmSource || this.bgmSource.playing) return;
+        this.bgmSource.play();
     }
 
     private play(key: string): void {
-        if (!this.enabled) {
+        if (!this.sfxEnabled) {
             return;
         }
         const path = SFX_MAP[key];
@@ -55,11 +98,11 @@ export class SoundManager extends Component {
     }
 
     private playClip(clip: AudioClip | null, path: string): void {
-        if (!this.source || !clip) {
+        if (!this.sfxSource || !clip) {
             console.log(`[音效] ${path.split('/').pop()}`);
             return;
         }
         // 逐音效独立播放，不打断当前；未被 use 时优雅降级
-        this.source.playOneShot(clip);
+        this.sfxSource.playOneShot(clip);
     }
 }

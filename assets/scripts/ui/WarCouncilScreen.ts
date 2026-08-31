@@ -10,7 +10,9 @@ import {
     resources,
     Sprite,
     SpriteFrame,
+    sys,
     Texture2D,
+    Tween,
     tween,
     UITransform,
     UIOpacity,
@@ -53,6 +55,20 @@ interface ReportEntry {
     tone: 'normal' | 'good' | 'bad';
 }
 
+interface DialogueLine {
+    speaker: string;
+    role: string;
+    text: string;
+    portrait: 'redesign/li-shimin/texture' | 'redesign/liu-wenjing-optimized/texture';
+    side: 'left' | 'right';
+}
+
+interface BattleOutcome {
+    title: string;
+    body: string;
+    tone: ReportEntry['tone'];
+}
+
 const C = {
     ink: new Color(12, 12, 11, 248),
     inkSoft: new Color(22, 21, 18, 242),
@@ -75,6 +91,39 @@ const COUNCIL: CouncilOption[] = [
     { key: 'defend', title: '防御', short: '固守待援', detail: '坚壁清野，修整城防并稳住军心', target: '太原', turns: 1, odds: 86, food: -300 },
     { key: 'raid', title: '突袭', short: '袭击敌军', detail: '轻骑穿越井陉，抢在敌援之前夺关', target: '井陉关', turns: 2, odds: 68, food: -600 },
     { key: 'pacify', title: '安抚', short: '招抚降附', detail: '安抚河东乡勇，扩充兵源并提升民心', target: '河东', turns: 1, odds: 74, food: -400 }
+];
+
+const ONBOARDING_KEY = 'tangwar:onboarding:v3';
+
+const PROLOGUE_DIALOGUE: DialogueLine[] = [
+    {
+        speaker: '刘文静',
+        role: '晋阳令 · 军府谋主',
+        text: '关中空虚，长安震动。若还困守太原，待东都援军合围，再多兵粮也只是坐困孤城。',
+        portrait: 'redesign/liu-wenjing-optimized/texture',
+        side: 'right'
+    },
+    {
+        speaker: '李世民',
+        role: '敦煌郡公 · 出征主将',
+        text: '我愿领轻骑先出井陉，夺关断援。只是太行路险，粮道若迟一日，先锋便多一分凶险。',
+        portrait: 'redesign/li-shimin/texture',
+        side: 'left'
+    },
+    {
+        speaker: '刘文静',
+        role: '晋阳令 · 军府谋主',
+        text: '河东乡勇仍在观望。先安抚可得兵心，先奇袭可夺战机；两利不可兼得，这一令要由你来定。',
+        portrait: 'redesign/liu-wenjing-optimized/texture',
+        side: 'right'
+    },
+    {
+        speaker: '李世民',
+        role: '敦煌郡公 · 出征主将',
+        text: '军情、粮秣、民心皆已列入战图。请入军帐——选定军议后，以印信传令三军。',
+        portrait: 'redesign/li-shimin/texture',
+        side: 'left'
+    }
 ];
 
 /** 横屏全域战图：军议、经营、外交、计策、战报与回合推进共用同一运行态。 */
@@ -110,6 +159,8 @@ export class WarCouncilScreen extends Component {
     private routeLayer!: Node;
     private radialLayer!: Node;
     private timelineLayer!: Node;
+    private mapTools!: Node;
+    private toastNode!: Node;
     private orderButton!: Node;
     private holdFill!: Node;
     private holdLabel!: Label;
@@ -117,6 +168,8 @@ export class WarCouncilScreen extends Component {
     private holding = false;
     private committed = false;
     private settings = { music: true, vibration: true, fastText: false };
+    private guideLayer: Node | null = null;
+    private cinematicLayer: Node | null = null;
 
     init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[]): this {
         this.turns = turns;
@@ -167,9 +220,11 @@ export class WarCouncilScreen extends Component {
         this.buildBottomNav();
         this.buildPagePanel();
         this.buildToast();
+        resources.preload('redesign/liu-wenjing-optimized/texture', Texture2D);
         this.selectCouncil('raid');
         this.refreshHeader();
         this.playIntro();
+        this.showOpening();
     }
 
     private buildMap(): void {
@@ -417,6 +472,7 @@ export class WarCouncilScreen extends Component {
         const navW = 42;
         const navH = 168;
         const nav = this.rect(this.node, 'MapTools', navW, navH, new Color(14, 14, 13, 248), -this.width / 2 + 24, 10, 0, C.bronzeSoft);
+        this.mapTools = nav;
         const tools: Array<{ key: PageKey; label: string; icon: string }> = [
             { key: 'world', label: '地形', icon: 'tool-terrain' },
             { key: 'diplomacy', label: '势力', icon: 'tool-power' },
@@ -435,12 +491,13 @@ export class WarCouncilScreen extends Component {
     }
 
     private buildPagePanel(): void {
-        this.pagePanel = this.rect(this.node, 'SystemPage', this.width - 24, this.height - 96, C.panel, 0, -2, 3, C.bronze);
+        this.pagePanel = this.rect(this.node, 'SystemPage', this.width - 8, this.height - 48, C.panel, 0, -20, 3, C.bronze);
         this.pagePanel.active = false;
     }
 
     private buildToast(): void {
         const toast = this.rect(this.node, 'Toast', this.mapWidth - 20, 27, new Color(16, 15, 13, 238), -this.width / 2 + this.mapWidth / 2, -this.height / 2 + 99, 3, C.bronzeSoft);
+        this.toastNode = toast;
         this.toastLabel = this.label(toast, '军议已就绪', 13, C.paper, 0, 0, this.mapWidth - 42, 22, true);
         toast.addComponent(UIOpacity).opacity = 0;
     }
@@ -448,14 +505,29 @@ export class WarCouncilScreen extends Component {
     private openPage(key: PageKey): void {
         this.page = key;
         this.refreshNav();
+        const toastOpacity = this.toastNode.getComponent(UIOpacity);
+        if (toastOpacity) {
+            Tween.stopAllByTarget(toastOpacity);
+            toastOpacity.opacity = 0;
+        }
+        this.toastNode.active = false;
+        this.toastNode.setPosition(
+            key === 'world' ? -this.width / 2 + this.mapWidth / 2 : 0,
+            key === 'world' ? -this.height / 2 + 99 : -this.height / 2 + 18,
+            12
+        );
         if (key === 'world') {
             this.pagePanel.active = false;
             this.radialLayer.active = true;
-            this.orderButton.active = true;
+            this.reportPanel.active = true;
+            this.mapTools.active = true;
+            this.timelineLayer.active = true;
             return;
         }
         this.radialLayer.active = false;
-        this.orderButton.active = false;
+        this.reportPanel.active = false;
+        this.mapTools.active = false;
+        this.timelineLayer.active = false;
         this.pagePanel.active = true;
         this.pagePanel.removeAllChildren();
         this.pagePanel.setScale(0.97, 0.97, 1);
@@ -467,8 +539,8 @@ export class WarCouncilScreen extends Component {
     }
 
     private pageHeader(title: string, subtitle: string): Node {
-        const w = this.width - 24;
-        const h = this.height - 96;
+        const w = this.width - 8;
+        const h = this.height - 48;
         this.label(this.pagePanel, title, 22, C.gold, -w / 2 + 112, h / 2 - 27, 176, 30, true, HorizontalTextAlignment.LEFT);
         this.label(this.pagePanel, subtitle, 12, C.muted, 12, h / 2 - 27, w - 360, 24, false, HorizontalTextAlignment.LEFT);
         this.rect(this.pagePanel, 'HeaderRule', w - 24, 1, C.bronzeSoft, 0, h / 2 - 48);
@@ -516,7 +588,7 @@ export class WarCouncilScreen extends Component {
         const city = this.selectedCity();
         this.label(parent, `${city.name}募兵 · 金 ${city.gold.toLocaleString()} · 总兵 ${city.army.toLocaleString()}`, 16, C.paper, -205, 82, 360, 27, true);
         TROOP_ORDER.slice(0, 5).forEach((type, i) => this.armyCard(parent, type, i));
-        this.label(parent, '麾下名将', 17, C.gold, 165, 83, 130, 26, true);
+        this.label(parent, '麾下名将', 17, C.gold, 112, 83, 130, 26, true);
         GENERALS.filter((g) => g.faction === 'tang').slice(0, 5).forEach((general, i) => {
             const row = this.rect(parent, `General_${general.id}`, 305, 32, C.panelSoft, 217, 48 - i * 37, 3, C.bronzeSoft);
             this.label(row, general.name, 14, C.paper, -102, 0, 76, 22, true, HorizontalTextAlignment.LEFT);
@@ -528,7 +600,7 @@ export class WarCouncilScreen extends Component {
             }, this);
         });
         const assigned = GENERALS.find((g) => g.id === city.generalId);
-        this.label(parent, `当前守将：${assigned?.name ?? '尚未任命'}`, 12, assigned ? C.green : C.muted, 312, 83, 166, 23, true);
+        this.label(parent, `当前守将：${assigned?.name ?? '尚未任命'}`, 12, assigned ? C.green : C.muted, 270, 83, 214, 23, true, HorizontalTextAlignment.RIGHT);
     }
 
     private armyCard(parent: Node, type: TroopType, i: number): void {
@@ -596,18 +668,29 @@ export class WarCouncilScreen extends Component {
             { key: 'fastText', title: '快速战报', desc: '跳过逐字展开动画' }
         ];
         rows.forEach((item, i) => {
-            const row = this.rect(parent, `Setting_${item.key}`, 620, 52, C.panelSoft, 0, 62 - i * 63, 4, C.bronzeSoft);
-            this.label(row, item.title, 16, C.paper, -225, 8, 140, 24, true, HorizontalTextAlignment.LEFT);
-            this.label(row, item.desc, 11, C.muted, -80, -12, 420, 19, false, HorizontalTextAlignment.LEFT);
+            const col = i % 2;
+            const rowIndex = Math.floor(i / 2);
+            const row = this.rect(parent, `Setting_${item.key}`, 340, 58, C.panelSoft, -180 + col * 360, 57 - rowIndex * 72, 4, C.bronzeSoft);
+            this.label(row, item.title, 16, C.paper, -89, 10, 138, 24, true, HorizontalTextAlignment.LEFT);
+            this.label(row, item.desc, 10, C.muted, -41, -14, 232, 18, false, HorizontalTextAlignment.LEFT);
             const on = this.settings[item.key];
-            const toggle = this.rect(row, 'Toggle', 74, 28, on ? C.cinnabar : new Color(57, 55, 50, 255), 252, 0, 14, C.bronzeSoft);
+            const toggle = this.rect(row, 'Toggle', 68, 28, on ? C.cinnabar : new Color(57, 55, 50, 255), 128, 0, 14, C.bronzeSoft);
             this.label(toggle, on ? '开启' : '关闭', 12, on ? C.paper : C.muted, 0, 0, 58, 20, true);
             row.on(Node.EventType.TOUCH_END, () => {
                 this.settings[item.key] = !this.settings[item.key];
+                if (item.key === 'music') this.bus.emit('audio-setting', { music: this.settings.music });
                 this.renderPageAgain('settings');
             }, this);
         });
-        this.button(parent, 'ManualSave', '立即保存', 0, -104, 150, 34, () => {
+        const guide = this.rect(parent, 'ReplayGuide', 340, 58, C.panelSoft, 180, -15, 4, C.bronzeSoft);
+        this.label(guide, '开场、剧情与引导', 16, C.paper, -75, 10, 166, 24, true, HorizontalTextAlignment.LEFT);
+        this.label(guide, '重新查看背景、对话与操作说明', 10, C.muted, -35, -14, 244, 18, false, HorizontalTextAlignment.LEFT);
+        this.label(guide, '重看', 12, C.gold, 128, 0, 58, 20, true);
+        guide.on(Node.EventType.TOUCH_END, () => {
+            this.openPage('world');
+            this.showOpening(true);
+        }, this);
+        this.button(parent, 'ManualSave', '立即保存', 0, -102, 150, 34, () => {
             this.bus.emit('save-requested', {});
             this.showToast('进度已保存');
         });
@@ -631,10 +714,12 @@ export class WarCouncilScreen extends Component {
 
     private onHoldEnd(): void {
         if (!this.committed) {
+            const attempted = this.holdTimer > 0.04;
             this.holding = false;
             this.holdTimer = 0;
             this.holdFill.setScale(0.01, 0.01, 1);
             this.holdLabel.string = '按住\n传令';
+            if (attempted) this.showToast('继续按住，待印信填满后军令才会发出');
         }
     }
 
@@ -648,45 +733,45 @@ export class WarCouncilScreen extends Component {
             return;
         }
         city.food += option.food;
-        let title = '';
-        let body = '';
-        let tone: ReportEntry['tone'] = 'good';
+        const outcome: BattleOutcome = { title: '', body: '', tone: 'good' };
         if (option.key === 'defend') {
             city.defense += 8;
             city.morale = Math.min(100, city.morale + 3);
-            title = '并州防线加固';
-            body = `城防提升至 ${city.defense}，军心稳固，敌军暂缓推进。`;
+            outcome.title = '并州防线加固';
+            outcome.body = `城防提升至 ${city.defense}，军心稳固，敌军暂缓推进。`;
         } else if (option.key === 'pacify') {
             city.morale = Math.min(100, city.morale + 8);
             city.army += 600;
             city.troops.fubing += 600;
-            title = '河东乡勇归附';
-            body = '新得府兵六百，民心提升，后方粮道恢复。';
+            outcome.title = '河东乡勇归附';
+            outcome.body = '新得府兵六百，民心提升，后方粮道恢复。';
         } else {
             const victory = this.enemyStrength <= 10500 || this.turns.getTurnNumber() % 2 === 0;
             if (victory) {
                 this.enemyStrength = Math.max(2400, this.enemyStrength - 3600);
                 city.gold += 420;
-                title = '奇袭井陉得胜';
-                body = `李世民破敌三千六百，缴获黄金420，关隘守军降至 ${this.enemyStrength.toLocaleString()}。`;
+                outcome.title = '奇袭井陉得胜';
+                outcome.body = `李世民破敌三千六百，缴获黄金420，关隘守军降至 ${this.enemyStrength.toLocaleString()}。`;
             } else {
                 city.army = Math.max(1000, city.army - 900);
                 city.troops.fubing = Math.max(0, city.troops.fubing - 900);
-                title = '井陉遭遇伏击';
-                body = '我军折损九百，斥候已查明敌军伏兵位置。';
-                tone = 'bad';
+                outcome.title = '井陉遭遇伏击';
+                outcome.body = '我军折损九百，斥候已查明敌军伏兵位置。';
+                outcome.tone = 'bad';
             }
         }
-        this.reports.unshift({ title, body, tone });
-        this.reportCount += 1;
-        this.reportBadge.string = String(this.reportCount);
-        this.turns.advance();
-        this.bus.emit('turn-advanced', { year: this.turns.year, season: this.turns.getSeason(), turn: this.turns.getTurnNumber() });
-        this.refreshReport();
-        this.refreshHeader();
-        this.showToast(`${title} · 已推进至${this.turns.getSeason()}`);
-        this.flashRoute();
-        this.resetOrderButton();
+        this.playOrderBriefing(option, () => this.playBattleSequence(option, outcome, () => {
+            this.reports.unshift(outcome);
+            this.reportCount += 1;
+            this.reportBadge.string = String(this.reportCount);
+            this.turns.advance();
+            this.bus.emit('turn-advanced', { year: this.turns.year, season: this.turns.getSeason(), turn: this.turns.getTurnNumber() });
+            this.refreshReport();
+            this.refreshHeader();
+            this.showToast(`${outcome.title} · 已推进至${this.turns.getSeason()}`);
+            this.flashRoute();
+            this.resetOrderButton();
+        }));
     }
 
     private resetOrderButton(): void {
@@ -791,9 +876,15 @@ export class WarCouncilScreen extends Component {
     private compact(value: number): string { return value >= 10000 ? `${(value / 10000).toFixed(2)}万` : value.toLocaleString(); }
 
     private showToast(text: string): void {
+        this.toastNode.active = true;
         this.toastLabel.string = text;
+        this.toastNode.setPosition(
+            this.page === 'world' ? -this.width / 2 + this.mapWidth / 2 : 0,
+            this.page === 'world' ? -this.height / 2 + 99 : -this.height / 2 + 18,
+            12
+        );
         const opacity = this.toastLabel.node.parent!.getComponent(UIOpacity)!;
-        tween(opacity).stop();
+        Tween.stopAllByTarget(opacity);
         opacity.opacity = 0;
         tween(opacity).to(0.16, { opacity: 255 }).delay(1.5).to(0.28, { opacity: 0 }).start();
     }
@@ -801,6 +892,320 @@ export class WarCouncilScreen extends Component {
     private flashRoute(): void {
         const opacity = this.routeLayer.getComponent(UIOpacity) ?? this.routeLayer.addComponent(UIOpacity);
         tween(opacity).to(0.12, { opacity: 35 }).to(0.12, { opacity: 255 }).to(0.12, { opacity: 35 }).to(0.18, { opacity: 255 }).start();
+    }
+
+    private playOrderBriefing(option: CouncilOption, onComplete: () => void): void {
+        const lines: Record<CouncilKey, DialogueLine[]> = {
+            raid: [
+                {
+                    speaker: '刘文静', role: '军府谋主', side: 'right', portrait: 'redesign/liu-wenjing-optimized/texture',
+                    text: '斥候回报：井陉北坡有旧樵道，可绕开正面关城。但山雨将至，先锋只得一夜时辰。'
+                },
+                {
+                    speaker: '李世民', role: '出征主将', side: 'left', portrait: 'redesign/li-shimin/texture',
+                    text: '一夜足矣。轻骑衔枚，火把尽熄；天明之前，我要唐旗立在井陉关头。'
+                }
+            ],
+            defend: [
+                {
+                    speaker: '刘文静', role: '军府谋主', side: 'right', portrait: 'redesign/liu-wenjing-optimized/texture',
+                    text: '敌军游骑已过汾水。闭城只是第一步，还须迁粮入仓、毁去城外可资敌军之物。'
+                },
+                {
+                    speaker: '李世民', role: '出征主将', side: 'left', portrait: 'redesign/li-shimin/texture',
+                    text: '传令诸营轮守四门，我亲巡城防。太原不失，关中便仍有一支生力军。'
+                }
+            ],
+            pacify: [
+                {
+                    speaker: '刘文静', role: '军府谋主', side: 'right', portrait: 'redesign/liu-wenjing-optimized/texture',
+                    text: '河东父老所惧者并非唐军，而是兵过之后田庐尽毁。若明示军纪，乡勇自然归心。'
+                },
+                {
+                    speaker: '李世民', role: '出征主将', side: 'left', portrait: 'redesign/li-shimin/texture',
+                    text: '张榜安民，秋毫无犯。愿从军者编入府兵，愿归田者发粮护送。'
+                }
+            ]
+        };
+        this.showDialogue(lines[option.key], 0, onComplete, `军令确认 · ${option.title}${option.target}`);
+    }
+
+    private showDialogue(lines: DialogueLine[], index: number, onComplete: () => void, sceneTitle: string): void {
+        this.removeGuide();
+        const line = lines[index];
+        if (!line) return onComplete();
+
+        const layer = this.container(this.node, `Dialogue_${index + 1}`, this.width, this.height, 30);
+        layer.setPosition(0, 0, 30);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+        this.image(layer, 'DialogueMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'DialogueShade', this.width, this.height, new Color(4, 4, 4, 212), 0, 0);
+        this.rect(layer, 'DialogueTop', this.width, 54, new Color(13, 12, 10, 236), 0, this.height / 2 - 27, 0, C.bronzeSoft);
+        this.label(layer, sceneTitle, 16, C.gold, -this.width / 2 + 220, this.height / 2 - 27, 380, 24, true, HorizontalTextAlignment.LEFT);
+        this.label(layer, `${index + 1} / ${lines.length}`, 11, C.muted, this.width / 2 - 170, this.height / 2 - 27, 64, 20, true);
+
+        const portraitX = line.side === 'left' ? -286 : 286;
+        const portrait = this.image(layer, `DialoguePortrait_${line.speaker}`, line.portrait, 176, 176, portraitX, 35, 4);
+        const portraitOpacity = portrait.addComponent(UIOpacity);
+        portraitOpacity.opacity = 0;
+        portrait.setScale(0.9, 0.9, 1);
+        tween(portrait).to(0.34, { scale: Vec3.ONE }, { easing: 'backOut' }).start();
+        tween(portraitOpacity).to(0.28, { opacity: 255 }).start();
+
+        const card = this.rect(layer, 'DialogueCard', 650, 126, new Color(17, 15, 13, 252), 0, -105, 7, C.bronze);
+        card.setScale(0.97, 0.97, 1);
+        tween(card).to(0.2, { scale: Vec3.ONE }, { easing: 'cubicOut' }).start();
+        const nameX = line.side === 'left' ? -235 : 140;
+        this.label(card, line.speaker, 20, C.gold, nameX, 41, 150, 28, true, HorizontalTextAlignment.LEFT);
+        this.label(card, line.role, 11, C.muted, nameX + 153, 41, 190, 22, false, HorizontalTextAlignment.LEFT);
+        this.label(card, line.text, 15, C.paper, -7, 0, 604, 51, false, HorizontalTextAlignment.LEFT);
+        this.label(card, '点击“继续”推进剧情', 10, C.bronze, -217, -44, 180, 18, false, HorizontalTextAlignment.LEFT);
+
+        const next = () => {
+            if (index >= lines.length - 1) {
+                this.removeGuide();
+                onComplete();
+            } else {
+                this.showDialogue(lines, index + 1, onComplete, sceneTitle);
+            }
+        };
+        this.button(card, 'DialogueNext', index === lines.length - 1 ? '下达军令' : '继续', 260, -42, 100, 30, next);
+        const skip = this.button(layer, 'DialogueSkip', '跳过对话', this.width / 2 - 64, this.height / 2 - 27, 104, 28, () => {
+            this.removeGuide();
+            onComplete();
+        });
+        const skipLabel = skip.children.find((child) => child.getComponent(Label))?.getComponent(Label);
+        if (skipLabel) skipLabel.color = C.muted;
+    }
+
+    private playBattleSequence(option: CouncilOption, outcome: BattleOutcome, onComplete: () => void): void {
+        this.removeCinematic();
+        this.toastNode.active = false;
+        const layer = this.container(this.node, 'BattleCinematic', this.width, this.height, 28);
+        layer.setPosition(0, 0, 28);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.cinematicLayer = layer;
+
+        this.image(layer, 'BattleMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'BattleShade', this.width, this.height, new Color(4, 4, 3, 154), 0, 0);
+        this.rect(layer, 'BattleTop', this.width, 54, new Color(13, 12, 10, 246), 0, this.height / 2 - 27, 0, C.bronzeSoft);
+        this.label(layer, `军令执行 · ${option.title}${option.target}`, 18, C.gold, -this.width / 2 + 210, this.height / 2 - 27, 370, 28, true, HorizontalTextAlignment.LEFT);
+        const phaseLabel = this.label(layer, '先锋出营', 13, C.paper, 145, this.height / 2 - 27, 240, 24, true, HorizontalTextAlignment.RIGHT);
+
+        const stage = this.rect(layer, 'BattleStage', this.width - 46, 245, new Color(12, 11, 9, 116), 0, -1, 5, C.bronzeSoft);
+        const road = new Node('MarchRoad');
+        road.layer = Layers.Enum.UI_2D;
+        road.addComponent(UITransform).setContentSize(this.width - 100, 130);
+        const roadGraphics = road.addComponent(Graphics);
+        roadGraphics.lineWidth = 4;
+        roadGraphics.strokeColor = C.gold;
+        roadGraphics.moveTo(-300, -25);
+        roadGraphics.bezierCurveTo(-150, 52, 50, -45, 292, 23);
+        roadGraphics.stroke();
+        stage.addChild(road);
+
+        this.label(stage, '太原', 14, C.paper, -305, -55, 82, 24, true);
+        this.label(stage, option.target, 14, C.gold, 300, 53, 100, 24, true);
+        const unit = this.image(stage, 'TangVanguard', 'redesign/icons/step-march/texture', 48, 48, -300, -23, 5);
+        const enemy = this.image(stage, 'EnemyFormation', 'redesign/icons/step-battle/texture', 54, 54, 285, 18, 5);
+        const enemyGlow = enemy.addComponent(UIOpacity);
+        enemyGlow.opacity = 210;
+        tween(enemy).to(0.5, { scale: new Vec3(1.08, 1.08, 1) }).to(0.5, { scale: Vec3.ONE }).union().repeatForever().start();
+
+        const phases = option.key === 'raid'
+            ? ['轻骑出营', '穿越太行', '突入敌阵', '战果回报']
+            : option.key === 'defend'
+                ? ['关闭城门', '迁粮清野', '巡营整军', '防线结算']
+                : ['使者出城', '宣示军纪', '乡勇归附', '安抚结算'];
+        phases.forEach((phase, i) => {
+            const x = -246 + i * 164;
+            const item = this.rect(layer, `BattlePhase_${i}`, 142, 31, new Color(25, 22, 18, 236), x, -this.height / 2 + 31, 3, C.bronzeSoft);
+            this.label(item, `${i + 1}  ${phase}`, 11, i === 0 ? C.gold : C.muted, 0, 0, 132, 20, true);
+        });
+
+        const flash = this.rect(layer, 'BattleFlash', this.width, this.height, C.paper, 0, 0, 0);
+        const flashOpacity = flash.addComponent(UIOpacity);
+        flashOpacity.opacity = 0;
+        const result = this.rect(layer, 'BattleResult', 620, 188, new Color(18, 16, 13, 252), 0, -3, 8, outcome.tone === 'bad' ? C.red : C.gold);
+        result.active = false;
+        this.label(result, outcome.tone === 'bad' ? '军情急报' : '捷报', 15, outcome.tone === 'bad' ? C.red : C.gold, 0, 64, 130, 24, true);
+        this.label(result, outcome.title, 27, C.paper, 0, 28, 540, 38, true);
+        this.label(result, outcome.body, 14, C.muted, 0, -14, 540, 42, false);
+        this.label(result, `粮秣 ${option.food.toLocaleString()} · 季节将推进一回合`, 11, C.bronze, -88, -56, 280, 20, true);
+
+        let revealed = false;
+        let finished = false;
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            this.removeCinematic();
+            onComplete();
+        };
+        this.button(result, 'CollectReport', '收取战报', 220, -57, 124, 32, finish);
+
+        const skip = this.button(layer, 'SkipBattle', '跳过演出', this.width / 2 - 64, this.height / 2 - 27, 104, 28, () => revealResult());
+        const revealResult = () => {
+            if (revealed) return;
+            revealed = true;
+            Tween.stopAllByTarget(layer);
+            Tween.stopAllByTarget(unit);
+            Tween.stopAllByTarget(enemy);
+            Tween.stopAllByTarget(flashOpacity);
+            stage.active = false;
+            enemy.active = false;
+            unit.active = false;
+            skip.active = false;
+            phaseLabel.string = outcome.tone === 'bad' ? '伏兵突现 · 收拢残军' : '军令完成 · 战报送达';
+            result.active = true;
+            result.setScale(0.82, 0.82, 1);
+            const resultOpacity = result.addComponent(UIOpacity);
+            resultOpacity.opacity = 0;
+            tween(result).to(0.28, { scale: Vec3.ONE }, { easing: 'backOut' }).start();
+            tween(resultOpacity).to(0.2, { opacity: 255 }).start();
+        };
+
+        const speed = this.settings.fastText ? 0.58 : 1;
+        tween(unit)
+            .to(0.72 * speed, { position: new Vec3(-116, 28, 5) }, { easing: 'sineInOut' })
+            .to(0.7 * speed, { position: new Vec3(92, -10, 5) }, { easing: 'sineInOut' })
+            .to(0.58 * speed, { position: new Vec3(250, 15, 5) }, { easing: 'quadIn' })
+            .start();
+        tween(layer)
+            .delay(0.62 * speed).call(() => { if (!revealed) phaseLabel.string = phases[1]; })
+            .delay(0.72 * speed).call(() => { if (!revealed) phaseLabel.string = phases[2]; })
+            .delay(0.54 * speed).call(() => {
+                if (revealed) return;
+                tween(flashOpacity).to(0.05, { opacity: 220 }).to(0.2, { opacity: 0 }).start();
+                tween(stage).to(0.05, { position: new Vec3(-5, -1, 0) }).to(0.05, { position: new Vec3(6, -1, 0) }).to(0.08, { position: new Vec3(0, -1, 0) }).start();
+            })
+            .delay(0.58 * speed).call(() => { if (!revealed) revealResult(); })
+            .start();
+    }
+
+    private removeCinematic(): void {
+        if (!this.cinematicLayer?.isValid) {
+            this.cinematicLayer = null;
+            return;
+        }
+        Tween.stopAllByTarget(this.cinematicLayer);
+        this.cinematicLayer.destroy();
+        this.cinematicLayer = null;
+    }
+
+    private showOpening(force = false): void {
+        if (!force && sys.localStorage.getItem(ONBOARDING_KEY) === 'done') return;
+        this.removeGuide();
+        const layer = this.container(this.node, 'OpeningSequence', this.width, this.height, 30);
+        layer.setPosition(0, 0, 30);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+
+        this.image(layer, 'OpeningMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'OpeningShade', this.width, this.height, new Color(4, 4, 4, 218), 0, 0);
+        this.rect(layer, 'OpeningPanel', 590, 300, new Color(18, 16, 13, 242), 48, -2, 8, C.bronze);
+        this.image(layer, 'OpeningCommander', 'redesign/li-shimin/texture', 154, 154, -260, 18, 4);
+        this.label(layer, '序章 · 太原起兵', 14, C.gold, 60, 120, 410, 22, true, HorizontalTextAlignment.LEFT);
+        this.label(layer, '大业十三年，隋失其鹿', 31, C.paper, 60, 79, 420, 43, true, HorizontalTextAlignment.LEFT);
+        this.label(
+            layer,
+            '四海饥乱，群雄并起。\n李渊据太原，李世民请兵西进。\n此刻你执掌军帐：选军议、算粮道、定行止。\n每一道军令，都会改变大唐的开局。',
+            15,
+            C.muted,
+            88,
+            9,
+            476,
+            88,
+            false,
+            HorizontalTextAlignment.LEFT
+        );
+        this.label(layer, '进入后将开启军帐音乐', 11, C.bronze, 118, -60, 260, 19);
+        this.button(layer, 'EnterCouncil', '进入军帐', 92, -108, 176, 42, () => {
+            this.removeGuide();
+            this.showDialogue(PROLOGUE_DIALOGUE, 0, () => this.showTutorial(0), '军帐夜议');
+        });
+        const skip = this.button(layer, 'SkipOpening', '直接开始', 275, -108, 112, 34, () => this.finishTutorial());
+        const skipLabel = skip.children.find((child) => child.getComponent(Label))?.getComponent(Label);
+        if (skipLabel) skipLabel.color = C.muted;
+    }
+
+    private showTutorial(step: number): void {
+        this.removeGuide();
+        const steps = [
+            {
+                title: '第一步 · 选择军议',
+                body: '右侧三项军议会改变目标、耗粮和胜算。先比较后果，再决定本回合的行动。',
+                focus: { x: this.width / 2 - 97, y: 0, w: 184, h: 178 },
+                card: { x: -128, y: 56 }
+            },
+            {
+                title: '第二步 · 看懂作战进程',
+                body: '底部依次展示起点、整军、地形、行军、目标、胜算和粮耗。红色数字代表代价。',
+                focus: { x: -this.width / 2 + this.mapWidth / 2, y: -this.height / 2 + 46, w: this.mapWidth - 10, h: 84 },
+                card: { x: 92, y: 58 }
+            },
+            {
+                title: '第三步 · 长按传令',
+                body: '确认路线后，长按右下方印信直至填满。军令发出才会推进季节、结算资源并生成战报。',
+                focus: { x: this.width / 2 - 97, y: -this.height / 2 + 60, w: 104, h: 100 },
+                card: { x: 88, y: 62 }
+            }
+        ] as const;
+        const current = steps[step];
+        if (!current) return this.finishTutorial();
+        const layer = this.container(this.node, `Tutorial_${step + 1}`, this.width, this.height, 30);
+        layer.setPosition(0, 0, 30);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+        this.buildSpotlight(layer, current.focus.x, current.focus.y, current.focus.w, current.focus.h);
+
+        const card = this.rect(layer, 'GuideCard', 366, 126, new Color(20, 18, 15, 250), current.card.x, current.card.y, 7, C.gold);
+        this.label(card, current.title, 19, C.gold, -8, 35, 330, 27, true, HorizontalTextAlignment.LEFT);
+        this.label(card, current.body, 13, C.paper, -8, 3, 330, 46, false, HorizontalTextAlignment.LEFT);
+        this.label(card, `${step + 1} / ${steps.length}`, 11, C.muted, -142, -43, 54, 18, true);
+        this.button(card, 'GuideNext', step === steps.length - 1 ? '开始指挥' : '下一步', 108, -42, 112, 30, () => {
+            if (step === steps.length - 1) this.finishTutorial();
+            else this.showTutorial(step + 1);
+        });
+        const skip = this.button(layer, 'SkipGuide', '跳过引导', this.width / 2 - 64, this.height / 2 - 26, 104, 30, () => this.finishTutorial());
+        const label = skip.children.find((child) => child.getComponent(Label))?.getComponent(Label);
+        if (label) label.color = C.muted;
+    }
+
+    private buildSpotlight(parent: Node, x: number, y: number, width: number, height: number): void {
+        const left = -this.width / 2;
+        const right = this.width / 2;
+        const bottom = -this.height / 2;
+        const top = this.height / 2;
+        const x0 = x - width / 2 - 5;
+        const x1 = x + width / 2 + 5;
+        const y0 = y - height / 2 - 5;
+        const y1 = y + height / 2 + 5;
+        const shade = new Color(0, 0, 0, 184);
+        if (top > y1) this.rect(parent, 'GuideShadeTop', this.width, top - y1, shade, 0, (top + y1) / 2);
+        if (y0 > bottom) this.rect(parent, 'GuideShadeBottom', this.width, y0 - bottom, shade, 0, (y0 + bottom) / 2);
+        if (x0 > left) this.rect(parent, 'GuideShadeLeft', x0 - left, y1 - y0, shade, (x0 + left) / 2, y);
+        if (right > x1) this.rect(parent, 'GuideShadeRight', right - x1, y1 - y0, shade, (right + x1) / 2, y);
+        this.rect(parent, 'GuideFocus', width + 10, height + 10, new Color(0, 0, 0, 0), x, y, 5, C.gold);
+    }
+
+    private finishTutorial(): void {
+        sys.localStorage.setItem(ONBOARDING_KEY, 'done');
+        this.removeGuide();
+        this.showToast('军帐已就绪 · 先选择军议，再长按传令');
+    }
+
+    private removeGuide(): void {
+        if (!this.guideLayer?.isValid) {
+            this.guideLayer = null;
+            return;
+        }
+        this.guideLayer.destroy();
+        this.guideLayer = null;
     }
 
     private playIntro(): void {

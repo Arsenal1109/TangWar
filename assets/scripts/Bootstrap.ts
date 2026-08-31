@@ -31,6 +31,7 @@ export interface GameEvents {
     'panel-nav': { key: string };
     'panel-close': Record<string, never>;
     'save-requested': Record<string, never>;
+    'audio-setting': { music: boolean };
 }
 
 @ccclass('Bootstrap')
