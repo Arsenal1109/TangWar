@@ -1,6 +1,8 @@
 # M5 AI 与事件实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 全部任务已实施并合入 main（`af9387f`）；「天下大事」现由军帐主战屏「情报」页承接（见 M7 记录）。
 
 **Goal:** 加入群雄 AI（扩张 / 陈兵养锐）、历史事件链（入主长安 / 刘武周南下 / 王世充称帝）、胜利 / 失败与历史分支判定，并集成到回合推进。
 
@@ -35,7 +37,7 @@ tests/
 
 **Files:** Create `assets/scripts/core/WorldState.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/core/WorldState.ts`**
+- [x] **Step 1: 创建 `assets/scripts/core/WorldState.ts`**
 
 ```ts
 import type { CityState } from './ResourceSystem';
@@ -67,7 +69,7 @@ export function factionPower(world: WorldState, faction: string): number {
 }
 ```
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets/scripts/core/WorldState.ts
@@ -78,7 +80,7 @@ git commit -m "feat(m5): add world running state container"
 
 **Files:** Create `assets/scripts/data/HistoricalEvents.ts`、`assets/scripts/core/EventSystem.ts`、`tests/event.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/event.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/event.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -130,12 +132,12 @@ describe('EventSystem 历史事件', () => {
 
 > 注：初始 `changan` 属 `tang`（现有 `CITIES` 数据），故 618 自动满足「唐据长安」。
 
-- [ ] **Step 2: 运行测试，确认失败（EventSystem 未定义）**
+- [x] **Step 2: 运行测试，确认失败（EventSystem 未定义）**
 
 Run: `npx vitest run event.test.ts`
 Expected: FAIL（`checkHistoricalEvents` is not defined）
 
-- [ ] **Step 3: 创建 `assets/scripts/data/HistoricalEvents.ts`**
+- [x] **Step 3: 创建 `assets/scripts/data/HistoricalEvents.ts`**
 
 ```ts
 import type { WorldState } from '../core/WorldState';
@@ -180,7 +182,7 @@ export const HISTORICAL_EVENTS: WorldEventDef[] = [
 ];
 ```
 
-- [ ] **Step 4: 创建 `assets/scripts/core/EventSystem.ts`**
+- [x] **Step 4: 创建 `assets/scripts/core/EventSystem.ts`**
 
 ```ts
 import { HISTORICAL_EVENTS } from '../data/HistoricalEvents';
@@ -211,12 +213,12 @@ export function checkHistoricalEvents(world: WorldState): HistoricalEventResult 
 }
 ```
 
-- [ ] **Step 5: 运行测试，确认通过**
+- [x] **Step 5: 运行测试，确认通过**
 
 Run: `npx vitest run event.test.ts`
 Expected: PASS（4 用例）
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add assets tests
@@ -227,7 +229,7 @@ git commit -m "feat(m5): add historical event chain with once-trigger flags"
 
 **Files:** Create `assets/scripts/core/Victory.ts`、`tests/victory.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/victory.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/victory.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -280,12 +282,12 @@ describe('Victory 胜负判定', () => {
 
 > 注：`createWorld(620, createCityStates())` 的城池 faction 初始即含多种势力，故「群雄并立」用例成立。
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 Run: `npx vitest run victory.test.ts`
 Expected: FAIL（`checkVictory` is not defined）
 
-- [ ] **Step 3: 创建 `assets/scripts/core/Victory.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/Victory.ts`**
 
 ```ts
 import type { WorldState } from './WorldState';
@@ -318,12 +320,12 @@ export function checkVictory(world: WorldState): VictoryResult {
 }
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `npx vitest run victory.test.ts`
 Expected: PASS（5 用例）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add assets tests
@@ -334,7 +336,7 @@ git commit -m "feat(m5): add victory/defeat and historical branch grading"
 
 **Files:** Create `assets/scripts/core/AI.ts`、`tests/ai.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/ai.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/ai.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -390,12 +392,12 @@ describe('AI 群雄决策', () => {
 
 > 注：`twoFactionWorld('qin')` 中 qin 唯一的敌势是 tang；AI 决策在「进取/扩张」概率压低（LOW）时必然 expand，取 tang 最弱城。
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 Run: `npx vitest run ai.test.ts`
 Expected: FAIL（`decideFactions` / `applyAiActions` not defined）
 
-- [ ] **Step 3: 创建 `assets/scripts/core/AI.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/AI.ts`**
 
 ```ts
 import type { WorldState } from './WorldState';
@@ -482,12 +484,12 @@ export function applyAiActions(world: WorldState, actions: AiAction[]): void {
 }
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `npx vitest run ai.test.ts`
 Expected: PASS（3 用例）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add assets tests
@@ -498,7 +500,7 @@ git commit -m "feat(m5): add faction AI decide/apply (expand or reinforce) by pe
 
 **Files:** Create `assets/scripts/core/TurnFlow.ts`、`tests/turnflow.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/turnflow.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/turnflow.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -537,12 +539,12 @@ describe('TurnFlow 回合装配', () => {
 
 > 注：初始 `faction==='sui'` 的只有 `jiangdu`；将其归唐后唐至少有 4 城，AI（含隋以外势力）低随机扩张会削弱/吞噬敌城，从而减少唐城数，但大概率仍保有城池 → victory 为 null。
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 Run: `npx vitest run turnflow.test.ts`
 Expected: FAIL（`runWorldTurn` not defined）
 
-- [ ] **Step 3: 创建 `assets/scripts/core/TurnFlow.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/TurnFlow.ts`**
 
 ```ts
 import type { WorldState } from './WorldState';
@@ -581,12 +583,12 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
 }
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `npx vitest run turnflow.test.ts`
 Expected: PASS（3 用例）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add assets tests
@@ -597,7 +599,7 @@ git commit -m "feat(m5): assemble world turn with AI, settlement, events and vic
 
 **Files:** Create `assets/scripts/ui/EventsPanel.ts`；Modify `assets/scripts/Bootstrap.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/EventsPanel.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/EventsPanel.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -648,7 +650,7 @@ export class EventsPanel extends Component {
 }
 ```
 
-- [ ] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**：import `createWorld`、`runWorldTurn`、`EventsPanel` 与 `WorldState`；新增 `world` 字段；`GameEvents` 增加 `'world-events'`；创建 `EventsPanel` 并接入 turn-advanced（推进前同步回合、结算、emit 天下大事、打印结局）。
+- [x] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**：import `createWorld`、`runWorldTurn`、`EventsPanel` 与 `WorldState`；新增 `world` 字段；`GameEvents` 增加 `'world-events'`；创建 `EventsPanel` 并接入 turn-advanced（推进前同步回合、结算、emit 天下大事、打印结局）。
 
 ```ts
 import { EventsPanel } from './ui/EventsPanel';
@@ -678,17 +680,17 @@ import { runWorldTurn } from './core/TurnFlow';
     //     }
 ```
 
-- [ ] **Step 3: 编辑器预览验证**
+- [x] **Step 3: 编辑器预览验证**
 Expected: 推进回合后顶部下方弹出「天下大事」战报（AI 行动 / 缺粮 / 历史事件）；打印结局提示。
 
 ## Task 7: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（50 + event 4 + victory 5 + ai 3 + turnflow 3 = 65 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets tests docs

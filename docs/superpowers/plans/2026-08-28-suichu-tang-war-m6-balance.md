@@ -1,6 +1,8 @@
 # M6 平衡初调实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 连续计产已实施并合入 main（`d29b4e0`）；后续音效接线与平衡微调见 `5158cb2`。
 
 **Goal:** 修复资源产出按 10 万人口取整导致的「小城零产出」失衡，改为按 1 万人口连续计产，使各人口规模城池都能正常产出金/粮，并避免郡县每季倒贴口粮。
 
@@ -20,7 +22,7 @@
 
 **Files:** Modify `assets/scripts/core/ResourceSystem.ts:42-45,55-56`；Test `tests/resource.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/resource.test.ts`（新增 2 例）**
+- [x] **Step 1: 写失败测试 `tests/resource.test.ts`（新增 2 例）**
 
 ```ts
 it('小城（人口 8）产出不为零', () => {
@@ -37,12 +39,12 @@ it('人口线性计粮：人口 11 产 110 粮', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试，确认失败（population 8 产出 0）**
+- [x] **Step 2: 运行测试，确认失败（population 8 产出 0）**
 
 Run: `npx vitest run resource.test.ts`
 Expected: FAIL（新增 2 例失败，既有 3 例通过）
 
-- [ ] **Step 3: 修改 `assets/scripts/core/ResourceSystem.ts`** 产出公式与常量
+- [x] **Step 3: 修改 `assets/scripts/core/ResourceSystem.ts`** 产出公式与常量
 
 将
 ```ts
@@ -65,19 +67,19 @@ const foodGain = Math.floor(c.population * FOOD_PER_POP * (1 + FACILITY_FOOD_BON
 const goldGain = Math.floor(c.population * GOLD_PER_POP * (1 + FACILITY_GOLD_BONUS * c.facilities.market));
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `npx vitest run resource.test.ts`
 Expected: PASS（5 用例，含新增 2 例）
 
 ## Task 2: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（69 + 2 = 71 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets tests docs

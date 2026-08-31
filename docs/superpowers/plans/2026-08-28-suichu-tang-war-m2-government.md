@@ -1,6 +1,8 @@
 # M2 内政实现计划：施策 + 设施 + 城池状态
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 全部任务已实施并合入 main（`a4eb5e2`，计划文档见 `d396aa3`）；施政 / 设施功能现由军帐主战屏「城池」页承接（见 M7 记录）。
 
 **Goal:** 为 M1 增加内政系统：城池状态注册表、六种施策、四种城池设施（影响产出）、内政面板 UI。
 
@@ -33,7 +35,7 @@ tests/
 
 **Files:** Modify `assets/scripts/core/ResourceSystem.ts`、`tests/resource.test.ts`
 
-- [ ] **Step 1: 修改 `ResourceSystem.ts`**（在 `CityState` 增加 `facilities`、`policyUsed`；产出按设施加成）
+- [x] **Step 1: 修改 `ResourceSystem.ts`**（在 `CityState` 增加 `facilities`、`policyUsed`；产出按设施加成）
 
 ```ts
 export interface CityFacilities {
@@ -84,7 +86,7 @@ if (c.food < 0) {
 }
 ```
 
-- [ ] **Step 2: 修改 `tests/resource.test.ts` 的 makeCity 补默认字段**
+- [x] **Step 2: 修改 `tests/resource.test.ts` 的 makeCity 补默认字段**
 
 ```ts
 return {
@@ -96,7 +98,7 @@ return {
 };
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run resource.test.ts`
 Expected: PASS（3 用例；默认设施 0 级不改原数值）
@@ -105,7 +107,7 @@ Expected: PASS（3 用例；默认设施 0 级不改原数值）
 
 **Files:** Create `assets/scripts/data/Policies.ts`、`assets/scripts/core/PolicySystem.ts`、`tests/policy.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/policy.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/policy.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -156,7 +158,7 @@ describe('PolicySystem 施策', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/data/Policies.ts`**
+- [x] **Step 2: 创建 `assets/scripts/data/Policies.ts`**
 
 ```ts
 export interface PolicyEffects {
@@ -195,7 +197,7 @@ export function getPolicy(id: string): PolicyDef {
 }
 ```
 
-- [ ] **Step 3: 创建 `assets/scripts/core/PolicySystem.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/PolicySystem.ts`**
 
 ```ts
 import type { CityState } from './ResourceSystem';
@@ -234,7 +236,7 @@ export function applyPolicy(city: CityState, policyId: string): ApplyResult {
 }
 ```
 
-- [ ] **Step 4: 运行测试**
+- [x] **Step 4: 运行测试**
 
 Run: `npx vitest run policy.test.ts`
 Expected: PASS（4 用例）
@@ -243,7 +245,7 @@ Expected: PASS（4 用例）
 
 **Files:** Create `assets/scripts/core/FacilitySystem.ts`、`assets/scripts/core/CityRegistry.ts`、`tests/facility.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/facility.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/facility.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -304,7 +306,7 @@ describe('FacilitySystem 设施', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/FacilitySystem.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/FacilitySystem.ts`**
 
 ```ts
 import type { CityState } from './ResourceSystem';
@@ -342,7 +344,7 @@ export function buildFacility(city: CityState, type: FacilityType): ApplyResult 
 }
 ```
 
-- [ ] **Step 3: 创建 `assets/scripts/core/CityRegistry.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/CityRegistry.ts`**
 
 ```ts
 import { CITIES } from '../data/Cities';
@@ -376,7 +378,7 @@ export function resetTurnFlags(states: CityState[]): void {
 }
 ```
 
-- [ ] **Step 4: 运行测试**
+- [x] **Step 4: 运行测试**
 
 Run: `npx vitest run facility.test.ts`
 Expected: PASS（5 用例）
@@ -385,7 +387,7 @@ Expected: PASS（5 用例）
 
 **Files:** Create `assets/scripts/ui/GovernmentPanel.ts`；Modify `assets/scripts/Bootstrap.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/GovernmentPanel.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/GovernmentPanel.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, UITransform, Color } from 'cc';
@@ -477,7 +479,7 @@ export class GovernmentPanel extends Component {
 }
 ```
 
-- [ ] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**
+- [x] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**
 
 在 import 增加：
 
@@ -503,17 +505,17 @@ this.bus.on('turn-advanced', () => resetTurnFlags(this.cityStates));
 
 > 注：GovernmentPanel 初始 `selectedId='taiyuan'`，与地图默认选中一致；地图点选会联动刷新。
 
-- [ ] **Step 3: 编辑器预览验证**
+- [x] **Step 3: 编辑器预览验证**
 Expected: 底部上方出现「内政」面板，显示当前城池资源与六种施策；点施策扣资源/生效并置「已施政 是」；同一季再次点击提示失败；点地图其他城池联动刷新；点「下回合」清空施政标记。
 
 ## Task 5: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（data 5 + turn 4 + resource 3 + policy 4 + facility 5 = 21 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets/scripts tests

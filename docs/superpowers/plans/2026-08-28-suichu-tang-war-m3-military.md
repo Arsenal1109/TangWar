@@ -1,6 +1,8 @@
 # M3 军事实现计划：六兵种 + 募兵 + 行军 + 攻城结算 + 战报
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 全部任务已实施并合入 main（`b16b8c1`）；募兵 / 行军现由军帐主战屏「部队」页与城池卡「调兵」承接（见 M7 记录）。
 
 **Goal:** 为游戏加入军事系统：六兵种数据与克制矩阵、城池募兵、行军（按距离/兵种速度计回合）、攻城战结算（含城防/江河惩罚/将领加成）与演义化战报。
 
@@ -37,7 +39,7 @@ tests/
 
 **Files:** Create `assets/scripts/data/Troops.ts`、`tests/troops.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/troops.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/troops.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -69,7 +71,7 @@ describe('六兵种数据', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/data/Troops.ts`**
+- [x] **Step 2: 创建 `assets/scripts/data/Troops.ts`**
 
 ```ts
 export type TroopType = 'fubing' | 'jingbing' | 'qibing' | 'nubing' | 'xuanjia' | 'shuijun';
@@ -114,7 +116,7 @@ export function isCounter(att: TroopType, def: TroopType): boolean {
 }
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run troops.test.ts`
 Expected: PASS（3 用例）
@@ -123,7 +125,7 @@ Expected: PASS（3 用例）
 
 **Files:** Create `assets/scripts/core/Army.ts`、`assets/scripts/core/Military.ts`、`tests/military.test.ts`；Modify `assets/scripts/core/ResourceSystem.ts`、`assets/scripts/core/CityRegistry.ts`、三个既有测试的 makeCity
 
-- [ ] **Step 1: 修改 `ResourceSystem.ts`：`CityState` 增加 `troops`**
+- [x] **Step 1: 修改 `ResourceSystem.ts`：`CityState` 增加 `troops`**
 
 ```ts
 import type { TroopType } from '../data/Troops';
@@ -131,7 +133,7 @@ import type { TroopType } from '../data/Troops';
     troops: Record<TroopType, number>; // 各兵种兵力（与 army 同步）
 ```
 
-- [ ] **Step 2: 修改 `CityRegistry.ts` 的 createCityStates 初始化 troops**
+- [x] **Step 2: 修改 `CityRegistry.ts` 的 createCityStates 初始化 troops**
 
 ```ts
 import { TROOP_ORDER } from '../data/Troops';
@@ -139,7 +141,7 @@ import { TROOP_ORDER } from '../data/Troops';
     troops: { fubing: c.tier === 1 ? 8000 : 4000, jingbing: 0, qibing: 0, nubing: 0, xuanjia: 0, shuijun: 0 },
 ```
 
-- [ ] **Step 3: 修改三个既有测试的 makeCity：army 与 troops 保持一致**
+- [x] **Step 3: 修改三个既有测试的 makeCity：army 与 troops 保持一致**
 
 ```ts
 // makeCity 改为（以 resource.test.ts 为例，其余两处同样处理）：
@@ -154,7 +156,7 @@ function makeCity(partial: Partial<CityState>): CityState {
 }
 ```
 
-- [ ] **Step 4: 写失败测试 `tests/military.test.ts`**
+- [x] **Step 4: 写失败测试 `tests/military.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -207,7 +209,7 @@ describe('Military 募兵与兵力账本', () => {
 });
 ```
 
-- [ ] **Step 5: 创建 `assets/scripts/core/Army.ts`**
+- [x] **Step 5: 创建 `assets/scripts/core/Army.ts`**
 
 ```ts
 import type { CityState } from './ResourceSystem';
@@ -234,7 +236,7 @@ export function removeArmy(city: CityState, amount: number): number {
 }
 ```
 
-- [ ] **Step 6: 创建 `assets/scripts/core/Military.ts`**
+- [x] **Step 6: 创建 `assets/scripts/core/Military.ts`**
 
 ```ts
 import type { CityState } from './ResourceSystem';
@@ -254,7 +256,7 @@ export function recruit(city: CityState, type: TroopType, thousands: number): Ap
 }
 ```
 
-- [ ] **Step 7: 运行测试**
+- [x] **Step 7: 运行测试**
 
 Run: `npx vitest run military.test.ts resource.test.ts policy.test.ts facility.test.ts`
 Expected: PASS（原 21 用例不受影响 + 新增 5 用例）
@@ -263,7 +265,7 @@ Expected: PASS（原 21 用例不受影响 + 新增 5 用例）
 
 **Files:** Create `assets/scripts/core/BattleSystem.ts`、`tests/battle.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/battle.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/battle.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -316,7 +318,7 @@ describe('BattleSystem 战争结算', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/BattleSystem.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/BattleSystem.ts`**
 
 ```ts
 import { TROOP_ORDER, TROOPS, type TroopType, isCounter } from '../data/Troops';
@@ -407,7 +409,7 @@ export function resolveBattle(att: BattleArmy, def: BattleArmy, opts: BattleOpti
 }
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run battle.test.ts`
 Expected: PASS（4 用例）。若「城防获胜」「江河翻转」用例因固定 rng=1 不符，可微调常数（如城防加成/江河惩罚幅度）使断言成立，再回测全量。
@@ -416,7 +418,7 @@ Expected: PASS（4 用例）。若「城防获胜」「江河翻转」用例因�
 
 **Files:** Create `assets/scripts/core/MarchSystem.ts`、`tests/march.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/march.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/march.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -447,7 +449,7 @@ describe('MarchSystem 行军', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/MarchSystem.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/MarchSystem.ts`**
 
 ```ts
 import { TROOP_ORDER, TROOPS, type TroopType } from '../data/Troops';
@@ -498,7 +500,7 @@ export function tickMarch(order: MarchOrder): boolean {
 }
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run march.test.ts`
 Expected: PASS（3 用例）
@@ -507,7 +509,7 @@ Expected: PASS（3 用例）
 
 **Files:** Create `assets/scripts/ui/MilitaryPanel.ts`；Modify `assets/scripts/Bootstrap.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/MilitaryPanel.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/MilitaryPanel.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -585,19 +587,19 @@ export class MilitaryPanel extends Component {
 }
 ```
 
-- [ ] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**：import 并装配 `MilitaryPanel`（与 GovernmentPanel 相同模式）。
+- [x] **Step 2: 修改 `assets/scripts/Bootstrap.ts`**：import 并装配 `MilitaryPanel`（与 GovernmentPanel 相同模式）。
 
-- [ ] **Step 3: 编辑器预览验证**
+- [x] **Step 3: 编辑器预览验证**
 Expected: 军事面板列出六兵种与当前兵力，点击招募 1 千扣金并加兵；金不足提示。
 
 ## Task 6: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（原 21 + troops 3 + military 5 + battle 4 + march 3 = 36 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets tests docs

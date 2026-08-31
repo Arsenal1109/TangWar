@@ -1,6 +1,8 @@
 # M4 将领 / 外交 / 谋略实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 全部任务已实施并合入 main（`6e4dd60`）；外交 / 谋略 / 将领功能现由军帐主战屏「外交 / 计策」页承接（见 M7 记录）。
 
 **Goal:** 加入将领任命与忠诚、势力外交关系与行动、谋略成功率结算（离间/计取/谣言），并配套两面板 UI。
 
@@ -31,7 +33,7 @@ tests/
 
 **Files:** Create `assets/scripts/core/GeneralSystem.ts`、`tests/generals.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/generals.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/generals.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -76,7 +78,7 @@ describe('GeneralSystem 将领', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/GeneralSystem.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/GeneralSystem.ts`**
 
 ```ts
 import { GENERALS } from '../data/Generals';
@@ -137,7 +139,7 @@ export function changeLoyalty(g: GeneralState, delta: number): void {
 }
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run generals.test.ts`
 Expected: PASS（5 用例）
@@ -146,7 +148,7 @@ Expected: PASS（5 用例）
 
 **Files:** Create `assets/scripts/core/Diplomacy.ts`、`tests/diplomacy.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/diplomacy.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/diplomacy.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -197,7 +199,7 @@ describe('Diplomacy 外交', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/Diplomacy.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/Diplomacy.ts`**
 
 ```ts
 import { FACTIONS } from '../data/Factions';
@@ -325,7 +327,7 @@ export function performDiplo(
 }
 ```
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run diplomacy.test.ts`
 Expected: PASS（5 用例）
@@ -334,7 +336,7 @@ Expected: PASS（5 用例）
 
 **Files:** Create `assets/scripts/core/Stratagem.ts`、`tests/stratagem.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/stratagem.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/stratagem.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -375,7 +377,7 @@ describe('Stratagem 谋略', () => {
 });
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/core/Stratagem.ts`**
+- [x] **Step 2: 创建 `assets/scripts/core/Stratagem.ts`**
 
 ```ts
 import type { GeneralState } from './GeneralSystem';
@@ -436,7 +438,7 @@ export function spreadRumor(targetMorale: number, selfStrategy: number, gold: nu
 
 > 注：`spreadRumor` 返回 `moraleDelta`，由调用方应用到目标城池 `morale`（纯函数不直接持有城池）。
 
-- [ ] **Step 3: 运行测试**
+- [x] **Step 3: 运行测试**
 
 Run: `npx vitest run stratagem.test.ts`
 Expected: PASS（4 用例）
@@ -445,7 +447,7 @@ Expected: PASS（4 用例）
 
 **Files:** Create `assets/scripts/ui/GeneralsPanel.ts`、`assets/scripts/ui/DiplomacyPanel.ts`；Modify `assets/scripts/Bootstrap.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/GeneralsPanel.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/GeneralsPanel.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -521,7 +523,7 @@ export class GeneralsPanel extends Component {
 }
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/ui/DiplomacyPanel.ts`**
+- [x] **Step 2: 创建 `assets/scripts/ui/DiplomacyPanel.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -590,19 +592,19 @@ export class DiplomacyPanel extends Component {
 }
 ```
 
-- [ ] **Step 3: 修改 `assets/scripts/Bootstrap.ts`**：import 并装配 `GeneralsPanel`、`DiplomacyPanel`（与既有面板相同模式，均传入 `this.cityStates` / `this.bus`）。
+- [x] **Step 3: 修改 `assets/scripts/Bootstrap.ts`**：import 并装配 `GeneralsPanel`、`DiplomacyPanel`（与既有面板相同模式，均传入 `this.cityStates` / `this.bus`）。
 
-- [ ] **Step 4: 编辑器预览验证**
+- [x] **Step 4: 编辑器预览验证**
 Expected: 将领面板列出 12 将（五维+忠诚），点触任命为当前城守将；外交面板列出 12 势力与关系，点触进贡提升关系（需金 500）。
 
 ## Task 5: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（36 + generals 5 + diplomacy 5 + stratagem 4 = 50 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets tests docs

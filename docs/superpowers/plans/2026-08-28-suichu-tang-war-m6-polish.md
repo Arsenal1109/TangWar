@@ -1,6 +1,8 @@
 # M6 存档 / 音效打磨实现计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: subagent-driven-development 或 executing-plans 逐任务执行。步骤用 `- [ ]` 跟踪。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 存档 / 自动存档与音效占位已实施并合入 main（`67a9802`）；`SoundManager` 其后由占位升级为完整音频系统（BGM + SFX、手势解锁），`SaveManager` 增加 `save-requested` 手动存档，详见 `5158cb2`、`58eedac` 与 M7 打磨记录。
 
 **Goal:** 加入**存档 / 读档**（纯逻辑序列化、版本守卫、往返一致性）、**自动存档**与**读档**接线，以及**音效管理器**（无资源时优雅降级占位）。
 
@@ -27,7 +29,7 @@ tests/
 
 **Files:** Create `assets/scripts/core/SaveSystem.ts`、`tests/save.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/save.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/save.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -99,12 +101,12 @@ describe('SaveSystem 存档', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试，确认失败（SaveSystem 未定义）**
+- [x] **Step 2: 运行测试，确认失败（SaveSystem 未定义）**
 
 Run: `npx vitest run save.test.ts`
 Expected: FAIL（`serializeSave` / `applySave` not defined）
 
-- [ ] **Step 3: 创建 `assets/scripts/core/SaveSystem.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/SaveSystem.ts`**
 
 ```ts
 import type { WorldState } from './WorldState';
@@ -188,12 +190,12 @@ export function applySave(world: WorldState, data: SaveData): void {
 }
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `npx vitest run save.test.ts`
 Expected: PASS（4 用例）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add assets tests
@@ -206,7 +208,7 @@ git commit -m "feat(m6): add versioned save serialize/apply with in-place restor
 
 > `sys.localStorage` 来自 'cc'。存档键 `tangwar_save_v1`。
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/SaveManager.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/SaveManager.ts`**
 
 ```ts
 import { _decorator, Component, sys } from 'cc';
@@ -247,7 +249,7 @@ export class SaveManager extends Component {
 }
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/ui/SoundManager.ts`**
+- [x] **Step 2: 创建 `assets/scripts/ui/SoundManager.ts`**
 
 ```ts
 import { _decorator, Component } from 'cc';
@@ -282,7 +284,7 @@ export class SoundManager extends Component {
 }
 ```
 
-- [ ] **Step 3: 修改 `assets/scripts/Bootstrap.ts`**：装配 `SaveManager`、`SoundManager`；回合推进时自动存档。
+- [x] **Step 3: 修改 `assets/scripts/Bootstrap.ts`**：装配 `SaveManager`、`SoundManager`；回合推进时自动存档。
 
 ```ts
 import { SaveManager } from './ui/SaveManager';
@@ -304,17 +306,17 @@ import { SoundManager } from './ui/SoundManager';
             this.saveMgr.save(this.world);
 ```
 
-- [ ] **Step 4: 编辑器预览验证**
+- [x] **Step 4: 编辑器预览验证**
 Expected: 推进回合后控制台打印「[音效] 回合推进」「[存档] 已保存」；重载场景后调用 `SaveManager.load` 可恢复回合数。
 
 ## Task 3: 全量验证与提交
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run: `npx vitest run`
 Expected: 全部 PASS（65 + save 4 = 69 用例）
 
-- [ ] **Step 2: 提交**
+- [x] **Step 2: 提交**
 
 ```bash
 git add assets tests docs

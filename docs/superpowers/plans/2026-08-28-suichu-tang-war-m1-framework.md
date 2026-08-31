@@ -1,6 +1,8 @@
 # M1 框架实现计划：工程脚手架 + 核心循环 + 舆图渲染
 
 > **For agentic workers:** REQUIRED SUB-SKILL: 使用 subagent-driven-development（推荐）或 executing-plans 逐任务执行本计划。步骤用复选框（`- [ ]`）跟踪进度。
+>
+> **状态：✅ 已完成（2026-08-31 文档同步）** — 全部任务已实施并合入 main（`a7e7ae8`），纯逻辑单测全部通过；v2.0 起 `map/` 舆图与 `ui/TopBar`、`ui/BottomNav`、`ui/CitySheet` 等首屏组件已由军帐主战屏取代（见 M7 记录）。
 
 **Goal:** 搭建可被 Cocos Creator 3.8 打开并运行的《隋唐风云》工程骨架：数据表、回合/资源纯逻辑（含 node 单测）、水墨舆图渲染、顶部栏、底部导航、点城池弹卡。
 
@@ -67,7 +69,7 @@ d:\Github\TangWar\
 - Create: `tests/tsconfig.json`
 - Create: `tests/__mocks__/.gitkeep`（占位，保证目录存在）
 
-- [ ] **Step 1: 创建 Cocos 项目清单 `package.json`**
+- [x] **Step 1: 创建 Cocos 项目清单 `package.json`**
 
 ```json
 {
@@ -80,7 +82,7 @@ d:\Github\TangWar\
 }
 ```
 
-- [ ] **Step 2: 创建 `tsconfig.json`**
+- [x] **Step 2: 创建 `tsconfig.json`**
 
 ```json
 {
@@ -93,7 +95,7 @@ d:\Github\TangWar\
 }
 ```
 
-- [ ] **Step 3: 创建单测环境 `tests/package.json`**
+- [x] **Step 3: 创建单测环境 `tests/package.json`**
 
 ```json
 {
@@ -108,7 +110,7 @@ d:\Github\TangWar\
 }
 ```
 
-- [ ] **Step 4: 创建 `tests/vitest.config.ts`**
+- [x] **Step 4: 创建 `tests/vitest.config.ts`**
 
 ```ts
 import { defineConfig } from 'vitest/config';
@@ -121,7 +123,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 5: 创建 `tests/tsconfig.json`**
+- [x] **Step 5: 创建 `tests/tsconfig.json`**
 
 ```json
 {
@@ -137,7 +139,7 @@ export default defineConfig({
 }
 ```
 
-- [ ] **Step 6: 安装依赖并验证环境**
+- [x] **Step 6: 安装依赖并验证环境**
 
 Run（在 `d:\Github\TangWar\tests` 目录）：
 ```bash
@@ -146,7 +148,7 @@ npx vitest run
 ```
 Expected: `No test files found`（退出码 1 属正常，尚无测试），`node_modules` 生成成功即为环境就绪。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add package.json tsconfig.json tests/
@@ -164,7 +166,7 @@ git commit -m "chore(m1): scaffold cocos project and test harness"
 - Create: `assets/scripts/data/Generals.ts`
 - Test: `tests/data.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/data.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/data.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -219,12 +221,12 @@ describe('数据表完整性', () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npx vitest run data.test.ts`
 Expected: FAIL — `Cannot find module '../assets/scripts/data/Factions'`
 
-- [ ] **Step 3: 创建 `assets/scripts/core/Types.ts`**
+- [x] **Step 3: 创建 `assets/scripts/core/Types.ts`**
 
 ```ts
 // 共享基础类型（引擎无关，纯逻辑）
@@ -266,7 +268,7 @@ export interface GeneralDef {
 }
 ```
 
-- [ ] **Step 4: 创建 `assets/scripts/data/Factions.ts`**
+- [x] **Step 4: 创建 `assets/scripts/data/Factions.ts`**
 
 ```ts
 import type { FactionDef } from '../core/Types';
@@ -296,7 +298,7 @@ export function getFaction(id: string): FactionDef {
 }
 ```
 
-- [ ] **Step 5: 创建 `assets/scripts/data/Cities.ts`**
+- [x] **Step 5: 创建 `assets/scripts/data/Cities.ts`**
 
 ```ts
 import type { CityDef } from '../core/Types';
@@ -335,7 +337,7 @@ export function getCity(id: string): CityDef {
 }
 ```
 
-- [ ] **Step 6: 创建 `assets/scripts/data/Generals.ts`**
+- [x] **Step 6: 创建 `assets/scripts/data/Generals.ts`**
 
 ```ts
 import type { GeneralDef } from '../core/Types';
@@ -364,12 +366,12 @@ export function getGeneral(id: string): GeneralDef {
 }
 ```
 
-- [ ] **Step 7: 运行测试确认通过**
+- [x] **Step 7: 运行测试确认通过**
 
 Run: `npx vitest run data.test.ts`
 Expected: PASS（6 个用例）
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add assets/scripts/core/Types.ts assets/scripts/data/
@@ -387,7 +389,7 @@ git commit -m "feat(m1): add faction/city/general data tables and validation tes
 - Test: `tests/turn.test.ts`
 - Test: `tests/resource.test.ts`
 
-- [ ] **Step 1: 写失败测试 `tests/turn.test.ts`**
+- [x] **Step 1: 写失败测试 `tests/turn.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -424,7 +426,7 @@ describe('TurnManager 回合推进', () => {
 });
 ```
 
-- [ ] **Step 2: 写失败测试 `tests/resource.test.ts`**
+- [x] **Step 2: 写失败测试 `tests/resource.test.ts`**
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -464,12 +466,12 @@ describe('ResourceSystem 回合结算', () => {
 });
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [x] **Step 3: 运行测试确认失败**
 
 Run: `npx vitest run turn.test.ts resource.test.ts`
 Expected: FAIL — `Cannot find module`
 
-- [ ] **Step 4: 创建 `assets/scripts/core/TurnManager.ts`**
+- [x] **Step 4: 创建 `assets/scripts/core/TurnManager.ts`**
 
 ```ts
 import type { Season } from './Types';
@@ -519,7 +521,7 @@ export class TurnManager {
 }
 ```
 
-- [ ] **Step 5: 创建 `assets/scripts/core/ResourceSystem.ts`**
+- [x] **Step 5: 创建 `assets/scripts/core/ResourceSystem.ts`**
 
 ```ts
 export interface CityState {
@@ -592,7 +594,7 @@ export function resolveTurn(cities: CityState[], armyFoodPerThousand = 5): TurnR
 }
 ```
 
-- [ ] **Step 6: 创建 `assets/scripts/core/EventBus.ts`**
+- [x] **Step 6: 创建 `assets/scripts/core/EventBus.ts`**
 
 ```ts
 type Handler<T> = (payload: T) => void;
@@ -624,12 +626,12 @@ export class EventBus<Events extends Record<string, unknown>> {
 }
 ```
 
-- [ ] **Step 7: 运行测试确认通过**
+- [x] **Step 7: 运行测试确认通过**
 
 Run: `npx vitest run turn.test.ts resource.test.ts`
 Expected: PASS（7 个用例）
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add assets/scripts/core/
@@ -647,7 +649,7 @@ git commit -m "feat(m1): add turn manager, resource resolution and event bus wit
 
 > 本任务在 Cocos Creator 编辑器中进行。先在编辑器打开项目（会自动生成 `.meta`），再做以下步骤。
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/InkTheme.ts`（先写代码，供后续组件引用）**
+- [x] **Step 1: 创建 `assets/scripts/ui/InkTheme.ts`（先写代码，供后续组件引用）**
 
 ```ts
 // 水墨古风配色与字体常量
@@ -672,7 +674,7 @@ export const InkTheme = {
 import { Color } from 'cc';
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/Bootstrap.ts`**
+- [x] **Step 2: 创建 `assets/scripts/Bootstrap.ts`**
 
 ```ts
 import { _decorator, Component, Node, Canvas, Camera, view } from 'cc';
@@ -731,7 +733,7 @@ export class Bootstrap extends Component {
 
 > 说明：`MapRenderer`、`MapCamera`、`TopBar`、`BottomNav`、`CitySheet` 将在 Task 5—8 创建；若编译器报缺模块，先完成后续任务再回到编辑器验证。
 
-- [ ] **Step 3: 在编辑器创建最小场景**
+- [x] **Step 3: 在编辑器创建最小场景**
 1. 打开工程（Cocos Creator 3.8）
 2. 资源管理器右键 `assets/scenes` → 新建 → Scene，命名为 `main`
 3. 双击打开 `main.scene`
@@ -740,15 +742,15 @@ export class Bootstrap extends Component {
 6. 选中 `Game` 节点 → 属性检查器 → 添加组件 → 自定义脚本 → `Bootstrap`
 7. 保存场景（Ctrl+S）
 
-- [ ] **Step 4: 设置竖屏适配**
+- [x] **Step 4: 设置竖屏适配**
 1. 选中 `Canvas` 节点 → 属性检查器 → `Canvas` 组件 → 勾选 `Fit Height` 与 `Fit Width`（配合 Bootstrap 中 `setDesignResolutionSize(750,1334,2)`）
 2. 选中 `Canvas/Camera` 子节点 → `Camera` 组件 → `Projection` 选 `ORTHO`，`OrthoHeight` 约 667（=1334/2）
 
-- [ ] **Step 5: 启动预览验证**
+- [x] **Step 5: 启动预览验证**
 点击编辑器顶部 **预览** 按钮（浏览器或模拟器）。
 Expected: 出现竖屏空白页面（黑屏或有 Canvas 默认背景）。此时 Bootstrap 因依赖组件未创建会报错属预期，完成 Task 5—8 后重试。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add assets/scripts/Bootstrap.ts assets/scripts/ui/InkTheme.ts assets/scenes/
@@ -762,7 +764,7 @@ git commit -m "feat(m1): add bootstrap, ink theme and minimal main scene"
 **Files:**
 - Create: `assets/scripts/map/MapRenderer.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/map/MapRenderer.ts`**
+- [x] **Step 1: 创建 `assets/scripts/map/MapRenderer.ts`**
 
 ```ts
 import { _decorator, Component, Graphics, UITransform, Node, Color } from 'cc';
@@ -967,11 +969,11 @@ export class MapRenderer extends Component {
 }
 ```
 
-- [ ] **Step 2: 编辑器预览验证**
+- [x] **Step 2: 编辑器预览验证**
 在 Cocos Creator 打开项目 → 预览。
 Expected: 屏幕中央出现水墨风格舆图：网格、势力色块、黄河/长江、城池方/圆点。城池标签（Label）本任务暂不绘制，Task 6 补交互与文字。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add assets/scripts/map/MapRenderer.ts
@@ -985,7 +987,7 @@ git commit -m "feat(m1): render ink-wash strategy map with Graphics"
 **Files:**
 - Create: `assets/scripts/map/MapCamera.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/map/MapCamera.ts`**
+- [x] **Step 1: 创建 `assets/scripts/map/MapCamera.ts`**
 
 ```ts
 import { _decorator, Component, Node, UITransform, Vec2, EventTouch, input, Input } from 'cc';
@@ -1066,7 +1068,7 @@ export class MapCamera extends Component {
 
 > 说明：`MapRenderer` 的 `init` 同时被 Bootstrap 调用；为简化，由 Bootstrap 负责把 `cities` 传给两个组件（Bootstrap 中给 `MapCamera` 也补一句 `map.getComponent(MapCamera).init(bus, CITIES)`）。本任务中城市标签（名称 Label）在 `MapRenderer` 内用 Label 节点补充（见 Step 2）。
 
-- [ ] **Step 2: 给城池添加名称 Label**
+- [x] **Step 2: 给城池添加名称 Label**
 
 在 `MapRenderer.ts` 的 `init` 中，`this.drawAll()` 之后调用新增的 `drawCityLabels()`：
 
@@ -1098,7 +1100,7 @@ private drawCityLabels(): void {
 
 > 注：`import { Label } from 'cc'` 追加到 MapRenderer.ts 顶部 import 行。
 
-- [ ] **Step 3: 更新 Bootstrap 传入 cities 给 MapCamera**
+- [x] **Step 3: 更新 Bootstrap 传入 cities 给 MapCamera**
 
 修改 `assets/scripts/Bootstrap.ts`：
 
@@ -1109,10 +1111,10 @@ const cam = map.addComponent(MapCamera);
 cam.init(this.bus, CITIES);
 ```
 
-- [ ] **Step 4: 编辑器预览验证**
+- [x] **Step 4: 编辑器预览验证**
 Expected: 地图可单指拖动、滚轮缩放；点击城池会在侧栏（Task 7 顶部栏 / Task 8 城池卡）触发选中效果——尚未实现 UI 时可先看控制台 `city-selected` 日志（需临时在 Bootstrap 打印）。本任务验证点选命中与拖动缩放无报错即可。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add assets/scripts/map/MapCamera.ts assets/scripts/map/MapRenderer.ts assets/scripts/Bootstrap.ts
@@ -1126,7 +1128,7 @@ git commit -m "feat(m1): add map pan/zoom and city picking"
 **Files:**
 - Create: `assets/scripts/ui/TopBar.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/TopBar.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/TopBar.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -1231,14 +1233,14 @@ export class NextTurnButton extends Component {
 
 > 说明：TopBar 的深色墨底、资源栏等视觉将在 M6 打磨；M1 先实现年代显示 + 回合按钮 + 事件发布。`makeLabel` 返回 Label，调用处取 `.node`。
 
-- [ ] **Step 2: 更新 Bootstrap 装配 TopBar 的 UI 父级**
+- [x] **Step 2: 更新 Bootstrap 装配 TopBar 的 UI 父级**
 
 Bootstrap 中 `top.addComponent(TopBar).init(this.turns, this.bus)` 已满足；无需改动（TopBar 自身在 `build()` 里建子节点）。
 
-- [ ] **Step 3: 编辑器预览验证**
+- [x] **Step 3: 编辑器预览验证**
 Expected: 顶部显示「大业十三年 · 秋 / 大唐 · 李渊」与「下回合」按钮；点击按钮后年代变为「大业十三年 · 冬」，控制台打印回合日志；再点 3 次跨年为「大业十四年 · 春」。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add assets/scripts/ui/TopBar.ts
@@ -1253,7 +1255,7 @@ git commit -m "feat(m1): add top bar with turn advance button"
 - Create: `assets/scripts/ui/CitySheet.ts`
 - Create: `assets/scripts/ui/BottomNav.ts`
 
-- [ ] **Step 1: 创建 `assets/scripts/ui/CitySheet.ts`**
+- [x] **Step 1: 创建 `assets/scripts/ui/CitySheet.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, Color, UITransform } from 'cc';
@@ -1331,7 +1333,7 @@ export class CitySheet extends Component {
 }
 ```
 
-- [ ] **Step 2: 创建 `assets/scripts/ui/BottomNav.ts`**
+- [x] **Step 2: 创建 `assets/scripts/ui/BottomNav.ts`**
 
 ```ts
 import { _decorator, Component, Node, Label, UITransform, Color } from 'cc';
@@ -1386,10 +1388,10 @@ export class BottomNav extends Component {
 }
 ```
 
-- [ ] **Step 3: 编辑器预览验证**
+- [x] **Step 3: 编辑器预览验证**
 Expected: 点击城池 → 底部弹出城池卡（显示城名与势力）；点其他城池切换；底部导航 5 个图标可点，控制台打印「切到…」。地图拖动/缩放手感正常。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add assets/scripts/ui/CitySheet.ts assets/scripts/ui/BottomNav.ts
@@ -1400,12 +1402,12 @@ git commit -m "feat(m1): add city detail sheet and bottom nav skeleton"
 
 ## Task 9: M1 收尾验证
 
-- [ ] **Step 1: 全量单测**
+- [x] **Step 1: 全量单测**
 
 Run（在 `tests` 目录）：`npx vitest run`
 Expected: 全部 PASS（数据表 6 + 回合/资源 7 = 13 个用例）
 
-- [ ] **Step 2: 编辑器完整预览**
+- [x] **Step 2: 编辑器完整预览**
 在 Cocos Creator 打开 `main.scene` 预览：
 1. 竖屏水墨舆图正常渲染（网格 / 势力色块 / 江河 / 城池）
 2. 单指拖动地图、滚轮缩放
@@ -1413,7 +1415,7 @@ Expected: 全部 PASS（数据表 6 + 回合/资源 7 = 13 个用例）
 4. 顶部显示年代，点击「下回合」推进季节并跨年
 5. 控制台无报错
 
-- [ ] **Step 3: 更新 README（项目根）**
+- [x] **Step 3: 更新 README（项目根）**
 
 ```markdown
 # 隋唐风云
@@ -1428,7 +1430,7 @@ Expected: 全部 PASS（数据表 6 + 回合/资源 7 = 13 个用例）
 cd tests && npm install && npm test
 ```
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add README.md
