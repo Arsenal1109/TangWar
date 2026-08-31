@@ -2,6 +2,7 @@ import {
     _decorator,
     Color,
     Component,
+    Font,
     Graphics,
     HorizontalTextAlignment,
     Label,
@@ -189,6 +190,10 @@ export class WarCouncilScreen extends Component {
     private animatingEntrance = false;
     private resourceRoll = { t: 1 };
     private lastHeader: { food: number; gold: number; army: number; morale: number } | null = null;
+    private bodyFont: Font | null = null;
+    private labelRegistry: Label[] = [];
+    private panelSkins = new Map<string, SpriteFrame>();
+    private pendingSkins: Array<{ node: Node; skin: string }> = [];
 
     init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[]): this {
         this.turns = turns;
@@ -240,6 +245,8 @@ export class WarCouncilScreen extends Component {
         this.buildPagePanel();
         this.buildToast();
         resources.preload('redesign/liu-wenjing-optimized/texture', Texture2D);
+        this.loadBodyFont();
+        this.loadPanelSkins();
         this.selectCouncil('raid');
         this.refreshHeader();
         this.playIntro();
@@ -286,7 +293,7 @@ export class WarCouncilScreen extends Component {
         this.buildRadialCouncil();
         this.buildRoute();
         this.buildCampaignTimeline();
-        const battleTab = this.panel(this.node, 'BattleReportTab', 48, 62, C.panel, -this.width / 2 + this.mapWidth - 26, 108, T.radius.chip, C.bronze);
+        const battleTab = this.skinnedPanel(this.node, 'BattleReportTab', 48, 62, -this.width / 2 + this.mapWidth - 26, 108, 'card', T.radius.chip, C.bronze);
         this.label(battleTab, '战报', 14, C.gold, 0, 11, 42, 23, true);
         this.rect(battleTab, 'BadgeBg', 20, 20, C.cinnabar, 0, -18, 10);
         this.reportBadge = this.label(battleTab, String(this.reportCount), 11, C.paper, 0, -18, 18, 18, true);
@@ -310,7 +317,7 @@ export class WarCouncilScreen extends Component {
         const ro = ring.addComponent(UIOpacity);
         tween(ring).to(0.9, { scale: new Vec3(1.18, 1.18, 1) }).to(0.9, { scale: Vec3.ONE }).union().repeatForever().start();
         tween(ro).to(0.9, { opacity: 80 }).to(0.9, { opacity: 255 }).union().repeatForever().start();
-        const card = this.panel(this.radialLayer, 'TaiyuanDetail', 160, 102, new Color(24, 22, 18, 246), -112, -2, T.radius.control, C.bronze);
+        const card = this.skinnedPanel(this.radialLayer, 'TaiyuanDetail', 160, 102, -112, -2, 'card', T.radius.control, C.bronze);
         this.label(card, '太原', 18, C.gold, -48, 32, 58, 24, true, HorizontalTextAlignment.LEFT);
         this.label(card, '我方城池', 10, C.muted, 26, 32, 68, 19);
         this.label(card, '守军  8,000\n城防  68%\n粮草  +600/回合', 11, C.paper, -16, 1, 116, 45, false, HorizontalTextAlignment.LEFT);
@@ -319,14 +326,14 @@ export class WarCouncilScreen extends Component {
     }
 
     private buildCampaignTimeline(): void {
-        this.timelineLayer = this.panel(
+        this.timelineLayer = this.skinnedPanel(
             this.node,
             'CampaignTimeline',
             this.mapWidth - 10,
             84,
-            new Color(15, 15, 14, 248),
             -this.width / 2 + this.mapWidth / 2,
             -this.height / 2 + 46,
+            'panel',
             0,
             C.bronze,
             false
@@ -336,7 +343,7 @@ export class WarCouncilScreen extends Component {
 
     private refreshTimeline(): void {
         if (!this.timelineLayer) return;
-        this.timelineLayer.removeAllChildren();
+        this.clearChildren(this.timelineLayer);
         const option = this.currentOption();
         this.label(this.timelineLayer, `${option.title}${option.target} · 作战进程`, 14, C.gold, -195, 29, 220, 22, true, HorizontalTextAlignment.LEFT);
         const cells = [
@@ -361,7 +368,9 @@ export class WarCouncilScreen extends Component {
             this.image(this.timelineLayer, `TimelineIcon_${icons[index]}`, `redesign/icons/${icons[index]}/texture`, 18, 18, x - cellW / 2 + 13, -17, 4);
         });
         const line = this.rect(this.timelineLayer, 'ProgressLine', this.mapWidth - 62, 2, C.gold, 0, -37);
-        line.setSiblingIndex(0);
+        // 置于皮肤底图之上、内容格之下，进度轨道不被遮挡
+        const skinsCount = this.timelineLayer.children.filter((child) => child.name.endsWith('_Skin') || child.name.endsWith('_Shadow')).length;
+        line.setSiblingIndex(skinsCount);
     }
 
     private buildRoute(): void {
@@ -386,7 +395,7 @@ export class WarCouncilScreen extends Component {
         this.routeLayer.addChild(route);
         const opacity = route.addComponent(UIOpacity);
         tween(opacity).to(0.55, { opacity: 100 }).to(0.55, { opacity: 255 }).union().repeatForever().start();
-        const forecast = this.panel(this.routeLayer, 'RouteForecast', 116, 39, new Color(20, 22, 20, 238), 22, 77, T.radius.chip, C.bronzeSoft);
+        const forecast = this.skinnedPanel(this.routeLayer, 'RouteForecast', 116, 39, 22, 77, 'card', T.radius.chip, C.bronzeSoft);
         this.label(forecast, `${option.title} · 行军${option.turns}回合\n预计抵达${option.target}`, 11, C.paper, 0, 0, 106, 32, true);
         if (option.key !== 'defend') {
             for (let i = 0; i < 7; i += 1) {
@@ -435,7 +444,7 @@ export class WarCouncilScreen extends Component {
     private buildReportDrawer(): void {
         const panelW = 194;
         const panelH = this.height - 4;
-        this.reportPanel = this.panel(this.node, 'CouncilRail', panelW, panelH, C.panel, this.width / 2 - panelW / 2 - 2, 0, 0, C.bronze, false);
+        this.reportPanel = this.skinnedPanel(this.node, 'CouncilRail', panelW, panelH, this.width / 2 - panelW / 2 - 2, 0, 'panel', 0, C.bronze, false);
         const portrait = new Node('LiShiminPortrait');
         portrait.layer = Layers.Enum.UI_2D;
         portrait.addComponent(UITransform).setContentSize(58, 58);
@@ -494,7 +503,7 @@ export class WarCouncilScreen extends Component {
     private buildBottomNav(): void {
         const navW = 42;
         const navH = 168;
-        const nav = this.panel(this.node, 'MapTools', navW, navH, new Color(14, 14, 13, 248), -this.width / 2 + 24, 10, 0, C.bronzeSoft, false);
+        const nav = this.skinnedPanel(this.node, 'MapTools', navW, navH, -this.width / 2 + 24, 10, 'card', 0, C.bronzeSoft, false);
         this.mapTools = nav;
         const tools: Array<{ key: PageKey; label: string; icon: string }> = [
             { key: 'world', label: '地形', icon: 'tool-terrain' },
@@ -515,7 +524,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private buildPagePanel(): void {
-        this.pagePanel = this.panel(this.node, 'SystemPage', this.width - 8, this.height - 48, C.panel, 0, -20, T.radius.control, C.bronze, false);
+        this.pagePanel = this.skinnedPanel(this.node, 'SystemPage', this.width - 8, this.height - 48, 0, -20, 'panel', T.radius.control, C.bronze, false);
         this.pagePanel.active = false;
     }
 
@@ -915,7 +924,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private renderPageAgain(key: PageKey): void {
-        this.pagePanel.removeAllChildren();
+        this.clearChildren(this.pagePanel);
         if (key === 'cities') this.renderCitiesPage();
         if (key === 'army') this.renderArmyPage();
         if (key === 'strategy') this.renderStrategyPage();
@@ -1021,7 +1030,7 @@ export class WarCouncilScreen extends Component {
         tween(portrait).to(0.34, { scale: Vec3.ONE }, { easing: 'backOut' }).start();
         tween(portraitOpacity).to(0.28, { opacity: 255 }).start();
 
-        const card = this.panel(layer, 'DialogueCard', 650, 126, new Color(17, 15, 13, 252), 0, -105, 7, C.bronze);
+        const card = this.skinnedPanel(layer, 'DialogueCard', 650, 126, 0, -105, 'panel', 7, C.bronze);
         card.setScale(0.97, 0.97, 1);
         tween(card).to(0.2, { scale: Vec3.ONE }, { easing: 'cubicOut' }).start();
         const nameX = line.side === 'left' ? -235 : 140;
@@ -1096,7 +1105,7 @@ export class WarCouncilScreen extends Component {
         const flash = this.rect(layer, 'BattleFlash', this.width, this.height, C.paper, 0, 0, 0);
         const flashOpacity = flash.addComponent(UIOpacity);
         flashOpacity.opacity = 0;
-        const result = this.panel(layer, 'BattleResult', 620, 188, new Color(18, 16, 13, 252), 0, -3, 8, outcome.tone === 'bad' ? C.red : C.gold);
+        const result = this.skinnedPanel(layer, 'BattleResult', 620, 188, 0, -3, 'panel', 8, outcome.tone === 'bad' ? C.red : C.gold);
         result.active = false;
         this.label(result, outcome.tone === 'bad' ? '军情急报' : '捷报', 15, outcome.tone === 'bad' ? C.red : C.gold, 0, 64, 130, 24, true);
         this.label(result, outcome.title, 27, C.paper, 0, 28, 540, 38, true);
@@ -1173,7 +1182,7 @@ export class WarCouncilScreen extends Component {
 
         this.image(layer, 'OpeningMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
         this.rect(layer, 'OpeningShade', this.width, this.height, new Color(4, 4, 4, 218), 0, 0);
-        this.panel(layer, 'OpeningPanel', 590, 300, new Color(18, 16, 13, 242), 48, -2, 8, C.bronze);
+        this.skinnedPanel(layer, 'OpeningPanel', 590, 300, 48, -2, 'panel', 8, C.bronze);
         this.image(layer, 'OpeningCommander', 'redesign/li-shimin/texture', 154, 154, -260, 18, 4);
         this.label(layer, '序章 · 太原起兵', 14, C.gold, 60, 120, 410, 22, true, HorizontalTextAlignment.LEFT);
         this.label(layer, '大业十三年，隋失其鹿', 31, C.paper, 60, 79, 420, 43, true, HorizontalTextAlignment.LEFT);
@@ -1230,7 +1239,7 @@ export class WarCouncilScreen extends Component {
         this.guideLayer = layer;
         this.buildSpotlight(layer, current.focus.x, current.focus.y, current.focus.w, current.focus.h);
 
-        const card = this.panel(layer, 'GuideCard', 366, 126, new Color(20, 18, 15, 250), current.card.x, current.card.y, 7, C.gold);
+        const card = this.skinnedPanel(layer, 'GuideCard', 366, 126, current.card.x, current.card.y, 'panel', 7, C.gold);
         this.label(card, current.title, 19, C.gold, -8, 35, 330, 27, true, HorizontalTextAlignment.LEFT);
         this.label(card, current.body, 13, C.paper, -8, 3, 330, 46, false, HorizontalTextAlignment.LEFT);
         this.label(card, `${step + 1} / ${steps.length}`, 11, C.muted, -142, -43, 54, 18, true);
@@ -1284,7 +1293,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private button(parent: Node, name: string, text: string, x: number, y: number, width: number, height: number, onTap: () => void): Node {
-        const node = this.panel(parent, name, width, height, C.panelSoft, x, y, T.radius.control, C.bronzeSoft);
+        const node = this.skinnedPanel(parent, name, width, height, x, y, 'button', T.radius.control, C.bronzeSoft);
         this.label(node, text, 13, C.gold, 0, 0, width - 8, height - 4, true);
         node.on(Node.EventType.TOUCH_END, onTap, this);
         this.pressable(node);
@@ -1298,6 +1307,105 @@ export class WarCouncilScreen extends Component {
         node.setPosition(0, 0, z);
         parent.addChild(node);
         return node;
+    }
+
+    /** 清空容器但保留九宫格皮肤底图/阴影节点（以 _Skin/_Shadow 命名豁免，避免引用泄漏）。 */
+    private clearChildren(node: Node): void {
+        for (const child of node.children.slice()) {
+            if (child.name.endsWith('_Skin') || child.name.endsWith('_Shadow')) continue;
+            node.removeChild(child);
+        }
+    }
+
+    /** 皮肤面板：大面板与按钮的 9-slice 贴图表面；贴图未就绪或尺寸过小时回退到 Graphics 立体面板。 */
+    private skinnedPanel(parent: Node, name: string, width: number, height: number, x: number, y: number, skin: string, radius = 0, stroke?: Color, shadow = true): Node {
+        const min = ({ panel: 48, card: 36, button: 28 } as Record<string, number>)[skin] ?? 36;
+        if (width < min || height < min) {
+            return this.panel(parent, name, width, height, C.panel, x, y, radius, stroke, shadow);
+        }
+        const wrapper = this.container(parent, name, width, height, 1);
+        wrapper.setPosition(x, y, 1);
+        if (shadow) {
+            const sh = new Node(`${name}_Shadow`);
+            sh.layer = Layers.Enum.UI_2D;
+            sh.addComponent(UITransform).setContentSize(width, height);
+            sh.setPosition(0, -2, 0);
+            this.drawShadow(sh.addComponent(Graphics), width, height, radius);
+            wrapper.addChild(sh);
+        }
+        const bg = this.panel(wrapper, `${name}_Skin`, width, height, C.panel, 0, 0, radius, stroke, false);
+        if (this.panelSkins.has(skin)) this.applySkin(bg, skin);
+        else this.pendingSkins.push({ node: bg, skin });
+        return wrapper;
+    }
+
+    /** 皮肤底图：加载的 9-slice 贴图替换 Graphics（保留 UITransform 尺寸与子节点层次）。 */
+    private applySkin(node: Node, skin: string): void {
+        if (!node.isValid) return;
+        const frame = this.panelSkins.get(skin);
+        if (!frame) return;
+        const g = node.getComponent(Graphics);
+        if (g) node.removeComponent(g);
+        const sprite = node.getComponent(Sprite) ?? node.addComponent(Sprite);
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        sprite.type = Sprite.Type.SLICED;
+        sprite.spriteFrame = frame;
+    }
+
+    /** 预加载三套 9-slice 皮肤；加载完成后升级待定皮肤节点。 */
+    private loadPanelSkins(): void {
+        const skins: Array<[string, string, number]> = [
+            ['panel', 'redesign/panels/panel-lacquer/texture', 20],
+            ['card', 'redesign/panels/card-lacquer/texture', 14],
+            ['button', 'redesign/panels/button-gold/texture', 10]
+        ];
+        for (const [key, path, border] of skins) {
+            resources.load(path, Texture2D, (err, texture) => {
+                if (err || !texture) return;
+                const frame = new SpriteFrame();
+                frame.texture = texture;
+                frame.borderTop = border;
+                frame.borderBottom = border;
+                frame.borderLeft = border;
+                frame.borderRight = border;
+                frame.packable = false;
+                this.panelSkins.set(key, frame);
+                this.pendingSkins = this.pendingSkins.filter((item) => {
+                    if (item.skin !== key) return true;
+                    this.applySkin(item.node, key);
+                    return false;
+                });
+            });
+        }
+    }
+
+    /** 正式字体：双路径加载（裸路径 / /font 子资源），成功后应用到所有已建 label。 */
+    private loadBodyFont(): void {
+        const apply = (font: Font) => {
+            this.bodyFont = font;
+            this.labelRegistry = this.labelRegistry.filter((label) => {
+                if (!label.isValid) return false;
+                label.useSystemFont = false;
+                label.font = font;
+                return true;
+            });
+        };
+        resources.load('fonts/lxgw-wenkai', Font, (err, font) => {
+            if (!err && font) return apply(font);
+            resources.load('fonts/lxgw-wenkai/font', Font, (err2, font2) => {
+                if (!err2 && font2) apply(font2);
+            });
+        });
+    }
+
+    /** 面板阴影：两层半透明衰减圆角矩形（供 Graphics 底图与皮肤阴影节点共用）。 */
+    private drawShadow(g: Graphics, width: number, height: number, radius: number): void {
+        const hw = width / 2;
+        const hh = height / 2;
+        g.fillColor = T.shadowFar;
+        this.fillRound(g, -hw - 3.5, -hh - 5.5, width + 7, height + 9, radius + 3);
+        g.fillColor = T.shadowNear;
+        this.fillRound(g, -hw - 1.5, -hh - 2.5, width + 3, height + 4, radius + 1.5);
     }
 
     /** 立体面板：在单个 Graphics 内按绘制顺序叠软阴影、填充、顶部光泽与内外双描边，视觉分层不增加 draw call。 */
@@ -1316,12 +1424,7 @@ export class WarCouncilScreen extends Component {
     private drawPanelBg(g: Graphics, width: number, height: number, fill: Color, radius: number, stroke: Color | undefined, shadow: boolean): void {
         const hw = width / 2;
         const hh = height / 2;
-        if (shadow) {
-            g.fillColor = T.shadowFar;
-            this.fillRound(g, -hw - 3.5, -hh - 5.5, width + 7, height + 9, radius + 3);
-            g.fillColor = T.shadowNear;
-            this.fillRound(g, -hw - 1.5, -hh - 2.5, width + 3, height + 4, radius + 1.5);
-        }
+        if (shadow) this.drawShadow(g, width, height, radius);
         g.fillColor = fill;
         this.fillRound(g, -hw, -hh, width, height, radius);
         // 顶部光泽带：模拟漆面向上受光，只给足够大的实底面板，避免小块噪点
@@ -1438,6 +1541,11 @@ export class WarCouncilScreen extends Component {
         label.horizontalAlign = align;
         label.verticalAlign = VerticalTextAlignment.CENTER;
         label.overflow = Label.Overflow.SHRINK;
+        if (this.bodyFont) {
+            label.useSystemFont = false;
+            label.font = this.bodyFont;
+        }
+        this.labelRegistry.push(label);
         node.setPosition(x, y, 3);
         parent.addChild(node);
         return label;

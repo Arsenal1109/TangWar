@@ -38,11 +38,14 @@ npm test
 - `assets/scripts/data/`：势力、城池、将领数据表（引擎无关）
 - `assets/scripts/core/`：回合、资源结算、事件总线（引擎无关）
 - `assets/resources/redesign/`：新版沙盘战图与人物立绘资源
+- `assets/resources/redesign/panels/`：九宫格皮肤贴图（panel/card/button 三套，程序化生成）
+- `assets/resources/fonts/`：霞鹜文楷子集字体（替换系统 serif）
 - `assets/scripts/map/`：传统舆图渲染与交互（保留模块）
 - `assets/scripts/ui/WarCouncilScreen.ts`：军议、路线预演、传令、战报与动效主循环
+- `tools/`：UI 资产生成脚本（`gen-panels.mjs`、`extract-charset.mjs`、`subset-font.sh`）
 - `docs/superpowers/`：设计文档与实现计划
 
 ## 里程碑
 
-- 当前：横屏全域沙盘、三项军议、路线预演、城池/部队/计策/外交/情报完整页面、传令结算、动态战报与自动存档、全局视觉质感层（倒角描边/软阴影面板、按压反馈、级联入场、资源数字滚动）
+- 当前：横屏全域沙盘、三项军议、路线预演、城池/部队/计策/外交/情报完整页面、传令结算、动态战报与自动存档、全局视觉质感层（倒角描边/软阴影面板、按压反馈、级联入场、资源数字滚动）、霞鹜文楷正式字体与九宫格面板/按钮皮肤
 - 后续：扩充真实行军/战斗表现 → 历史事件分支 → 音频与字体资源 → 商店签名发布
