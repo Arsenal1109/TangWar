@@ -172,6 +172,7 @@ export class WarCouncilScreen extends Component {
     private reportBadge!: Label;
     private reportBody!: Node;
     private pagePanel!: Node;
+    private pageMask: Node | null = null;
     private navNodes = new Map<PageKey, Node>();
     private councilNodes = new Map<CouncilKey, Node>();
     private routeLayer!: Node;
@@ -545,6 +546,13 @@ export class WarCouncilScreen extends Component {
     }
 
     private buildPagePanel(): void {
+        // 模态遮罩：建在 pagePanel 之前 → 渲染于所有世界层（地图/城池标记/顶栏）之上、弹窗之下；
+        // 暗色 scrim 压暗下层页面，空触摸监听吞噬点击，杜绝下层城池标记/战报入口被"点穿"。
+        this.pageMask = this.rect(this.node, 'PageMask', this.width, this.height, new Color(4, 4, 4, 190), 0, 0);
+        this.pageMask.addComponent(UIOpacity).opacity = 0;
+        this.pageMask.active = false;
+        this.pageMask.on(Node.EventType.TOUCH_START, () => undefined, this);
+        this.pageMask.on(Node.EventType.TOUCH_END, () => undefined, this);
         this.pagePanel = this.skinnedPanel(this.node, 'SystemPage', this.width - 8, this.height - 48, 0, -20, 'panel', T.radius.control, C.bronze, false);
         this.pagePanel.active = false;
     }
@@ -572,6 +580,7 @@ export class WarCouncilScreen extends Component {
             12
         );
         if (key === 'world') {
+            this.hidePageMask();
             this.pagePanel.active = false;
             this.radialLayer.active = true;
             this.reportPanel.active = true;
@@ -584,6 +593,7 @@ export class WarCouncilScreen extends Component {
         this.mapTools.active = false;
         this.timelineLayer.active = false;
         this.pagePanel.active = true;
+        this.showPageMask();
         this.pagePanel.removeAllChildren();
         this.pagePanel.setScale(0.97, 0.97, 1);
         const opacity = this.pagePanel.getComponent(UIOpacity) ?? this.pagePanel.addComponent(UIOpacity);
@@ -593,6 +603,23 @@ export class WarCouncilScreen extends Component {
         this.animatingEntrance = true;
         this.renderPageAgain(key);
         this.animatingEntrance = false;
+    }
+
+    /** 弹窗遮罩：与弹窗同步淡入，压暗并锁定下层页面。 */
+    private showPageMask(): void {
+        if (!this.pageMask) return;
+        this.pageMask.active = true;
+        const opacity = this.pageMask.getComponent(UIOpacity) ?? this.pageMask.addComponent(UIOpacity);
+        Tween.stopAllByTarget(opacity);
+        opacity.opacity = 0;
+        tween(opacity).to(0.18, { opacity: 255 }).start();
+    }
+
+    private hidePageMask(): void {
+        if (!this.pageMask) return;
+        const opacity = this.pageMask.getComponent(UIOpacity);
+        if (opacity) Tween.stopAllByTarget(opacity);
+        this.pageMask.active = false;
     }
 
     private pageHeader(title: string, subtitle: string): Node {
