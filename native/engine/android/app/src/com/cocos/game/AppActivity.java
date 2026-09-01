@@ -24,9 +24,11 @@ THE SOFTWARE.
 ****************************************************************************/
 package com.cocos.game;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.view.WindowManager;
 
 import com.cocos.service.SDKWrapper;
 import com.cocos.lib.CocosActivity;
@@ -36,6 +38,15 @@ public class AppActivity extends CocosActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 横屏全屏延伸到刘海/挖孔之下（Android 9+）：
+        // 配合 JS 侧 sys.getSafeAreaRect() 把关键 UI 收进安全区，底幕铺满整个屏幕。
+        // 不设置时 DEFAULT 模式在横屏会由系统从刘海侧内缩窗口，出现不对称黑边且拿不到真实安全区。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams layoutParams = getWindow().getAttributes();
+            layoutParams.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(layoutParams);
+        }
         // DO OTHER INITIALIZATION BELOW
         SDKWrapper.shared().init(this);
 

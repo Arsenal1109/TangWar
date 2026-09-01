@@ -236,11 +236,34 @@ export class WarCouncilScreen extends Component {
 
     private build(): void {
         const visible = view.getVisibleSize();
-        this.width = visible.width;
-        this.height = visible.height;
+        // 刘海/挖孔避让（横屏时位于左右两侧）：安全区之外铺墨色底幕，整个 UI 收进安全区。
+        // 编辑器预览与无刘海设备 getSafeAreaRect 返回全屏 → 零避让，行为与从前完全一致。
+        const safe = sys.getSafeAreaRect();
+        const fullW = visible.width;
+        const fullH = visible.height;
+        const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+        const sx = clamp(safe.x, 0, fullW);
+        const sy = clamp(safe.y, 0, fullH);
+        const sw = clamp(safe.width, 0, fullW - sx);
+        const sh = clamp(safe.height, 0, fullH - sy);
+        const insetted = sw > 0 && sh > 0 && (sw < fullW || sh < fullH);
+        this.width = insetted ? sw : fullW;
+        this.height = insetted ? sh : fullH;
         this.mapWidth = this.width - 194;
         this.node.layer = Layers.Enum.UI_2D;
         this.node.addComponent(UITransform).setContentSize(this.width, this.height);
+        if (insetted) {
+            // 本节点对齐安全区中心；底幕反向偏移补回全屏尺寸，延伸到刘海与状态栏之下。
+            const offsetX = sx + sw / 2 - fullW / 2;
+            const offsetY = sy + sh / 2 - fullH / 2;
+            this.node.setPosition(offsetX, offsetY, 0);
+            const backdrop = this.rect(this.node, 'NotchBackdrop', fullW, fullH, new Color(8, 7, 6, 255), -offsetX, -offsetY);
+            backdrop.setSiblingIndex(0);
+            // 触摸地板：全屏尺寸盖到刘海之下，任何上层（对话/页面遮罩等安全区尺寸容器）
+            // 未命中的边缘触摸由此吞噬，杜绝穿透到城池标记；正常按钮在其上层先命中，不受影响。
+            backdrop.on(Node.EventType.TOUCH_START, () => undefined, this);
+            backdrop.on(Node.EventType.TOUCH_END, () => undefined, this);
+        }
         this.buildMap();
         this.buildHeader();
         this.buildWorldControls();
