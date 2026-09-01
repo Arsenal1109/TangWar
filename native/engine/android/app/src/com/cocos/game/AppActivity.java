@@ -28,6 +28,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
 import com.cocos.service.SDKWrapper;
@@ -38,15 +41,15 @@ public class AppActivity extends CocosActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 横屏全屏延伸到刘海/挖孔之下（Android 9+）：
-        // 配合 JS 侧 sys.getSafeAreaRect() 把关键 UI 收进安全区，底幕铺满整个屏幕。
-        // 不设置时 DEFAULT 模式在横屏会由系统从刘海侧内缩窗口，出现不对称黑边且拿不到真实安全区。
+        // 横屏窗口延伸到刘海/挖孔区域，JS 侧保持全屏画布，仅将贴边交互控件移离安全区。
+        // 不设置时 DEFAULT 模式在横屏会由系统从刘海侧内缩窗口，出现不对称黑边。
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             WindowManager.LayoutParams layoutParams = getWindow().getAttributes();
             layoutParams.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             getWindow().setAttributes(layoutParams);
         }
+        applyImmersiveMode();
         // DO OTHER INITIALIZATION BELOW
         SDKWrapper.shared().init(this);
 
@@ -55,7 +58,35 @@ public class AppActivity extends CocosActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        applyImmersiveMode();
         SDKWrapper.shared().onResume();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyImmersiveMode();
+        }
+    }
+
+    /** 游戏采用沉浸式横屏，避免状态栏/手势条把设计画布挤成上下黑边。 */
+    private void applyImmersiveMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.systemBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+            return;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
 
     @Override

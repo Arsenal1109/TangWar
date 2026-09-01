@@ -1,61 +1,90 @@
-# Product Design QA — 横屏军帐双屏
+# Design QA
+
+## Evidence
+
+- Reference viewport: `2400 x 1080`, density normalization `1:1`.
+- Reference home: `C:/Users/Administrator/AppData/Local/Temp/codex-clipboard-8aa6689b-ae24-450f-87ff-865a4996ba75.jpg`.
+- Reference diplomacy: `C:/Users/Administrator/AppData/Local/Temp/codex-clipboard-f33ac164-a507-4952-9374-878d1c7752cb.jpg`.
+- Final home: `D:/Github/TangWar/temp/design-qa-home-final-2400x1080.png`.
+- Final home (strategy idle): `D:/Github/TangWar/temp/design-qa-home-fix-final-2400x1080.png`.
+- Final home (strategy selected): `D:/Github/TangWar/temp/design-qa-home-strategy-final-2400x1080.png`.
+- Final diplomacy: `D:/Github/TangWar/temp/design-qa-diplomacy-2400x1080.png`.
+- Additional verified states: city administration, intelligence, settings, and the home battle-command panel.
+
+## Comparison history
+
+### Iteration 1 findings
+
+- P1: system pages were translucent enough for map routes, labels, and report badges to compete with page content.
+- P1: the top status area and device status-bar area could collide on wide notched devices.
+- P2: ornate full-page frames and repeated heavy card borders produced excessive visual weight.
+- P2: the home screen had overlapping city labels/cards and a crowded bottom process strip.
+- P2: diplomacy, administration, intelligence, and settings lacked consistent information hierarchy and state cues.
+
+### Applied fixes
+
+- Added safe-area-aware top/bottom layout and kept the right command rail flush to the playable edge.
+- Made system pages opaque, introduced a true modal mask, and temporarily hid map-stage elements behind them.
+- Replaced oversized ornamental frames with restrained dark panels, thin rules, semantic red/green accents, and clearer spacing.
+- Removed the redundant Pingyang map marker, simplified the Taiyuan summary card, and condensed campaign progress to five milestones.
+- Rebuilt diplomacy cards with status badges and relationship bars; split city administration into city/policy zones; added report types/unread states; rebuilt settings switches and save affordance.
+- Retained the existing historical-map art direction while improving contrast, tap-target grouping, and feedback states.
+
+### Iteration 2 result
+
+- Full-page and focused comparisons at `2400 x 1080` show no actionable P0, P1, or P2 visual defect.
+- Release preview contains no debug overlay and produced no browser console errors or warnings.
+- The only device-dependent P3 check is the exact appearance of transient OEM status icons; native immersive landscape and safe-area offsets are already enabled.
+
+### Iteration 3 findings and result
+
+- P1: the command affordance was visually prominent before a strategy was chosen, while the actual action was unavailable.
+- P1: city-policy and diplomacy cards could imply immediate execution without an explicit confirmation step.
+- P2: intelligence reports had no compact filter for mixed report types, and transient feedback could sit too close to the campaign timeline.
+- Gated long-press command input until a strategy is selected, with a disabled label and visible guidance; selecting a strategy now updates the route, timeline, and order state together.
+- Added explicit policy and tribute confirmation affordances, affordability states, and selection summaries so resource-changing actions are intentional.
+- Added intelligence filters, unread overflow guidance, and row affordances; moved toast feedback above the timeline to avoid visual collision.
+- Rebuilt web preview at `2400 x 1080`, verified idle and selected-strategy states, and observed no browser console errors or warnings.
+
+### Iteration 4 findings and result
+
+- P2: the selected 地形 tool used a high-saturation red fill that visually competed with its icon and could be perceived as covering the control.
+- P2: the three 军议策略 cards had icons too close to the card edge, making the circular artwork appear clipped on some render scales.
+- Reduced the selected tool to a dark cinnabar surface with a dedicated red accent rail and raised the icon content layer above the button surface.
+- Added a 32px icon base, 28px inner artwork, and explicit high z-order to each strategy card; the circular icons now retain a safe inset at the card edges.
+- Rebuilt and checked the `2400 x 1080` preview; terrain icon and all three strategy icons are fully visible, and browser console health remains clean.
+
+### Iteration 5 findings and result
+
+- P2: the 部队与将领 page placed the city recruitment summary on the same vertical band as the troop cards, so the summary could be visually covered by card tops.
+- P3: settings switches used the uncommon “启/止” labels and a tight knob, reducing scanability at landscape scale.
+- Moved the army summary, general heading, and assigned-general status into a dedicated header row; shifted troop cards and general rows down with preserved bottom clearance.
+- Refined settings switches with a larger touch target and natural “开/关” labels while keeping the existing immediate-apply behavior.
+- Rebuilt and checked army, strategy, and settings pages at `2400 x 1080`; no clipping or overlap remained and browser console health stayed clean.
+
+### Iteration 6 findings and result
+
+- P2: the map route used a thick red curve with rectangular dash segments that did not follow the curve, creating a harsh and imprecise selection effect.
+- P2: city selection used a single oversized pulsing circle, while the danger area used a high-saturation breathing fill.
+- Reworked routes into layered dark-underlay, glow, and rounded main strokes; marching particles now sample the Bézier curve and an arrowhead clarifies the destination.
+- Replaced single-circle selection pulses with restrained double-ring reticles and four-corner registration marks; softened the danger-area fill and added a fine outline.
+- Rebuilt and checked idle/selected map states at `2400 x 1080`; route animation, target reticles, and strategy interaction render cleanly with no browser console errors.
+
+### Iteration 7 findings and result
+
+- P2: the war transition relied on a single moving unit and one flash, so command execution felt static outside the map route.
+- Added strategy-specific battlefield motion: escort formation, swaying banners, arrow volleys, impact sparks, expanding dust, and layered road treatment.
+- Raid, defense, and pacify commands now use distinct visual feedback while preserving skip/reveal controls.
+- Rebuilt and checked the animation preview at `2400 x 1080`; no browser console errors.
+
+## Fidelity surfaces
+
+- Typography: consistent hierarchy for page title, card title, data, and helper copy; no clipped text in verified states.
+- Spacing: aligned grids, predictable gutters, edge-safe header/rail, and unobstructed bottom controls.
+- Color: gold is reserved for hierarchy/actions, red for selection/threat, green for positive status; backgrounds remain high-contrast.
+- Imagery: historical map and commander portrait remain focal assets without interfering with system pages.
+- Copy and icons: all actions retain clear labels and directional affordances; state changes have visible feedback.
+- Interaction: home commands, page navigation, settings toggles, save, reports, city policies, and diplomacy actions were exercised in preview.
+- Responsiveness: verified at default desktop preview and the target `2400 x 1080` landscape reference.
 
 final result: passed
-
-## 对照基准
-
-- 视觉真值：`C:\Users\Administrator\.codex\generated_images\01a048ef-e069-7021-b347-8eca83010bef\exec-c915bd58-61ea-411b-8a18-fb0af6fb7a11.png`
-- 浏览器实现：`D:\Github\TangWar\.superpowers\brainstorm\847-1787898523\content\qa\final-main-icons.png`
-- 全屏同框：`D:\Github\TangWar\.superpowers\brainstorm\847-1787898523\content\qa\reference-vs-final-full.png`
-- 右侧军议栏同框：`D:\Github\TangWar\.superpowers\brainstorm\847-1787898523\content\qa\reference-vs-final-rail.png`
-- 底部作战进程同框：`D:\Github\TangWar\.superpowers\brainstorm\847-1787898523\content\qa\reference-vs-final-timeline.png`
-- 城池页证据：`D:\Github\TangWar\.superpowers\brainstorm\847-1787898523\content\qa\final-city-page.png`
-- 本地预览：`http://127.0.0.1:4190/`
-- 状态：大业十三年秋、唐势力、太原选中、军议“突袭井陉关”选中、战报 3 条、尚未传令。
-- CSS viewport：844 × 390；devicePixelRatio 1；Cocos 设计分辨率 844 × 390。
-- 源图 1840 × 864；去除上下 7px 非内容边后将 1840 × 850 归一化到 844 × 390，再与实现同框检查。
-
-## 最终结论
-
-- 无未解决的 P0、P1 或 P2 视觉问题。
-- [P3] 源图使用冬季数值与更偏写实的战场地貌，实现读取当前存档的秋季数值并使用可交互沙盘地图，因此地形纹理和资源数字不做逐像素复制；页面骨架、操作位置、视觉层级及语义均已对齐。
-- [P3] 中文字体使用系统 serif 族以兼顾 Android 兼容性，字面与源图刻本字体存在轻微差异，但标题、数值、小字均无裁切或不可读问题。
-
-## 必查表面
-
-- 字体与排版：顶部年代/势力/资源、地图标记、城池卡、军议标题和主按钮层级与源图一致；小字在 844 × 390 下可读。
-- 间距与布局：主战图 650px、右侧军议栏 194px；左侧四项工具、底部全宽作战进程、右下传令按钮与源图对应，无溢出或遮挡。
-- 色彩：墨黑、木色、朱砂、青灰、纸色与金色的语义一致；选中态、危险区、正负资源反馈清楚。
-- 图像与图标：战图、李世民头像及军议/时间线/地图工具均使用真实位图资源；军议、进程和工具图标直接取自用户附图的对应视觉，不使用文本符号或占位图。
-- 文案：年代、势力、资源、太原、井陉关、三项军议、兵力/行军/胜率、粮耗、战报和作战进程信息完整。
-
-## 对照迭代记录
-
-1. 初始横屏版
-   - P1：此前“方向 3”主战页与本次附图的军帐双屏结构不同。
-   - 修复：以本次附图为唯一视觉基准，重构为 650px 战图 + 194px 军议栏，并恢复底部作战进程与右下传令区。
-2. 结构对齐轮
-   - P2：地图工具数量、城池卡位置、时间线贴底方式和右栏信息密度与源图仍有差异。
-   - 修复：工具收敛为地形/势力/城池/标记四项；城池卡移至左下；时间线贴底；主将、兵力、行军、胜率、三项军议与传令区重排。
-3. 资产与质感轮
-   - P2：关键图标仍由文字代替，领土范围过于规则，字体气质偏现代。
-   - 修复：从源图提取并接入军议、时间线、地图工具位图；领土改为半透明不规则多边形；全局改用 serif 字体并细化金/朱砂描边。
-4. 页面完整性轮
-   - P2：城池页左侧城况曾与政令区域重叠。
-   - 修复：将城况摘要固定在城池列表下方，并复核城池、部队、计策、外交、情报、设置页面的返回与操作路径。
-
-## 交互与运行验证
-
-- 主循环可用：选择军议 → 路线/时间线/收益同步 → 长按传令 → 回合、资源、战报和存档更新。
-- 地图工具可进入城池、势力和情报页；城池卡可进入调兵和内政；军议标题可进入计策页；设置入口、手动存档、资源动作、外交与情报反馈均已实现。
-- 太原选择环、军令路线、领土警示、行军节点、传令呼吸及按住进度均有动画反馈。
-- 浏览器复核主战页与城池页，最终 console errors：0。
-- 最终逻辑测试：17 个文件、72 项测试全部通过。
-
-## 实现清单
-
-- [x] 按附图重建横屏军帐双屏主战页。
-- [x] 接入源图风格的军议、地图工具和作战进程图标。
-- [x] 完成军议选择、路线预演、长按传令、回合反馈和保存闭环。
-- [x] 完成城池、部队、计策、外交、情报和设置页面。
-- [x] 844 × 390 浏览器同屏对照，无 P0/P1/P2 残留。
