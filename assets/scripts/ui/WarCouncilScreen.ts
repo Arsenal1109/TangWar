@@ -476,7 +476,40 @@ export class WarCouncilScreen extends Component {
         tween(opacity).to(1.2, { opacity: 150 }).to(1.2, { opacity: 255 }).union().repeatForever().start();
     }
 
+    /** 可点暗示：金色右向箭头，标在可点击行/卡的右缘（字体子集无此字形，用 Graphics 绘制）。 */
+    private affordance(parent: Node, x: number, y: number, scale = 1): void {
+        const node = new Node('TapAffordance');
+        node.layer = Layers.Enum.UI_2D;
+        node.addComponent(UITransform).setContentSize(10 * scale, 14 * scale);
+        node.setPosition(x, y, 6);
+        const g = node.addComponent(Graphics);
+        g.strokeColor = C.gold;
+        g.lineWidth = 2.4;
+        g.lineCap = Graphics.LineCap.ROUND;
+        g.moveTo(-2.2 * scale, -4.6 * scale);
+        g.lineTo(2.4 * scale, 0);
+        g.lineTo(-2.2 * scale, 4.6 * scale);
+        g.stroke();
+        parent.addChild(node);
+    }
+
     private buildCityMarker(name: string, x: number, y: number, own: boolean, target = false): void {
+        if (target) {
+            // 目标城池可点（切换突袭军议）：脉动金环提示，与太原 CityPulse 同语言
+            const ring = new Node('TargetRing');
+            ring.layer = Layers.Enum.UI_2D;
+            ring.addComponent(UITransform).setContentSize(96, 96);
+            ring.setPosition(x, y, 0);
+            const rg = ring.addComponent(Graphics);
+            rg.strokeColor = new Color(240, 174, 80, 200);
+            rg.lineWidth = 2.5;
+            rg.circle(0, 0, 21);
+            rg.stroke();
+            this.node.addChild(ring);
+            const ro = ring.addComponent(UIOpacity);
+            tween(ring).to(1.1, { scale: new Vec3(1.28, 1.28, 1) }).to(1.1, { scale: Vec3.ONE }).union().repeatForever().start();
+            tween(ro).to(1.1, { opacity: 70 }).to(1.1, { opacity: 220 }).union().repeatForever().start();
+        }
         const color = target ? C.cinnabar : own ? new Color(90, 62, 38, 245) : new Color(36, 48, 47, 240);
         const marker = this.panel(this.node, `City_${name}`, target ? 76 : 61, 27, color, x, y, T.radius.chip, target ? C.gold : C.bronzeSoft);
         this.label(marker, name, target ? 14 : 13, C.paper, 0, 0, target ? 70 : 55, 22, true);
@@ -531,6 +564,7 @@ export class WarCouncilScreen extends Component {
         this.councilNodes.clear();
         const councilTitle = this.label(this.reportBody, '军议策略', 14, C.gold, -50, 72, 86, 22, true, HorizontalTextAlignment.LEFT);
         councilTitle.node.on(Node.EventType.TOUCH_END, () => this.openPage('strategy'), this);
+        this.affordance(this.reportBody, -8, 72, 0.85); // 标题可点（跳转计策府）的显性提示
         this.label(this.reportBody, '选择一项军议生效', 10, C.muted, 38, 72, 100, 18);
         COUNCIL.forEach((option, index) => {
             const selected = option.key === this.selected;
@@ -538,6 +572,7 @@ export class WarCouncilScreen extends Component {
             this.image(card, `CouncilIcon_${option.key}`, `redesign/icons/council-${option.key}/texture`, 31, 31, -66, 0, 4);
             this.label(card, `${option.title}${option.target}`, 14, C.paper, -3, 9, 96, 21, true);
             this.label(card, option.key === 'defend' ? '城防+20% · 士气-10' : option.key === 'raid' ? '胜率+15% · 行军-1回合' : '粮草+800 · 民心+5', 10, option.key === 'defend' ? C.green : option.key === 'raid' ? C.gold : C.green, 8, -12, 130, 18);
+            this.affordance(card, 80, 0);
             card.on(Node.EventType.TOUCH_END, () => this.selectCouncil(option.key), this);
             this.pressable(card);
             this.councilNodes.set(option.key, card);
@@ -663,7 +698,8 @@ export class WarCouncilScreen extends Component {
             const selected = city.id === this.selectedCityId;
             const row = this.panel(parent, `CityRow_${city.id}`, 156, 39, selected ? C.cinnabar : C.panelSoft, -this.width / 2 + 92, 78 - i * 44, T.radius.control, selected ? C.gold : C.bronzeSoft);
             this.label(row, city.name, 15, C.paper, -46, 0, 58, 25, true, HorizontalTextAlignment.LEFT);
-            this.label(row, `兵 ${this.compact(city.army)}  民 ${city.morale}`, 11, selected ? C.gold : C.muted, 32, 0, 86, 21);
+            this.label(row, `兵 ${this.compact(city.army)}  民 ${city.morale}`, 11, selected ? C.gold : C.muted, 26, 0, 70, 21);
+            this.affordance(row, 69, 0);
             row.on(Node.EventType.TOUCH_END, () => {
                 this.selectedCityId = city.id;
                 this.bus.emit('city-selected', { cityId: city.id });
@@ -682,6 +718,7 @@ export class WarCouncilScreen extends Component {
             const card = this.panel(parent, `Policy_${policy.id}`, 165, 62, city.policyUsed ? new Color(29, 28, 25, 220) : C.panelSoft, -35 + col * 177, 59 - row * 72, T.radius.control, C.bronzeSoft);
             this.label(card, policy.name, 15, city.policyUsed ? C.muted : C.paper, -3, 15, 145, 22, true);
             this.label(card, policy.desc, 10, C.muted, -3, -13, 145, 30);
+            if (!city.policyUsed) this.affordance(card, 76, 0); // 已施政时置灰且无箭头：明确的"不可点"态
             card.on(Node.EventType.TOUCH_END, () => {
                 const result = applyPolicy(city, policy.id);
                 this.refreshHeader();
@@ -704,6 +741,7 @@ export class WarCouncilScreen extends Component {
             const row = this.panel(parent, `General_${general.id}`, 305, 32, C.panelSoft, 217, 48 - i * 37, T.radius.control, C.bronzeSoft);
             this.label(row, general.name, 14, C.paper, -102, 0, 76, 22, true, HorizontalTextAlignment.LEFT);
             this.label(row, `统${general.stats.command} 谋${general.stats.strategy} 勇${general.stats.valor}`, 11, C.muted, 30, 0, 170, 20);
+            this.affordance(row, 143, 0);
             row.on(Node.EventType.TOUCH_END, () => {
                 city.generalId = general.id;
                 this.showToast(`${general.name}已任命为${city.name}守将`, 'good');
@@ -721,7 +759,8 @@ export class WarCouncilScreen extends Component {
         const troop = TROOPS[type];
         const card = this.panel(parent, `Troop_${type}`, 154, 48, C.panelSoft, -318 + (i % 2) * 164, 43 - Math.floor(i / 2) * 56, T.radius.control, C.bronzeSoft);
         this.label(card, troop.name, 14, C.paper, -44, 10, 60, 21, true, HorizontalTextAlignment.LEFT);
-        this.label(card, `${city.troops[type].toLocaleString()} · 金${troop.cost}/千`, 10, C.muted, 23, -11, 116, 18);
+        this.label(card, `${city.troops[type].toLocaleString()} · 金${troop.cost}/千`, 10, C.muted, 14, -11, 96, 18);
+        this.affordance(card, 68, 0);
         card.on(Node.EventType.TOUCH_END, () => {
             const result = recruit(city, type, 1);
             this.refreshHeader();
@@ -744,7 +783,7 @@ export class WarCouncilScreen extends Component {
             const card = this.panel(parent, `Plan_${i}`, 380, 69, C.panelSoft, -205 + (i % 2) * 410, 52 - Math.floor(i / 2) * 82, T.radius.card, C.bronzeSoft);
             this.label(card, plan.name, 17, C.paper, -98, 13, 150, 25, true, HorizontalTextAlignment.LEFT);
             this.label(card, plan.desc, 12, C.muted, -17, -14, 310, 22, false, HorizontalTextAlignment.LEFT);
-            this.label(card, '执行', 13, C.gold, 140, 0, 54, 24, true);
+            this.button(card, `PlanGo_${i}`, '执行', 140, 0, 64, 26, plan.action); // 真按钮替代金色文字：明确的可点信号
             card.on(Node.EventType.TOUCH_END, plan.action, this);
             this.pressable(card);
             this.entrance(card, i);
@@ -760,6 +799,7 @@ export class WarCouncilScreen extends Component {
             this.label(card, faction.name, 14, C.paper, -4, 18, 166, 22, true);
             this.label(card, `关系 ${relation > 0 ? '+' : ''}${relation} · ${this.diplomacy.atWar.includes(faction.id) ? '交战' : '中立'}`, 11, relation >= 20 ? C.green : relation < 0 ? C.red : C.muted, -4, -7, 164, 20);
             this.label(card, '进贡 200金', 10, C.gold, -4, -26, 150, 17);
+            this.affordance(card, 86, 0);
             card.on(Node.EventType.TOUCH_END, () => this.executeDiplomacy(faction.id, faction.name), this);
             this.pressable(card);
             this.entrance(card, i);
@@ -772,7 +812,8 @@ export class WarCouncilScreen extends Component {
         this.reportCount = 0;
         this.reportBadge.string = '0';
         this.reports.slice(0, 5).forEach((entry, i) => {
-            const row = this.panel(parent, `Intel_${i}`, this.width - 70, 36, i === 0 ? new Color(54, 38, 27, 248) : C.panelSoft, 0, 70 - i * 42, T.radius.control, C.bronzeSoft);
+            // 纯展示行：无描边 + 更暗填充，与可点的行卡明确区分
+            const row = this.panel(parent, `Intel_${i}`, this.width - 70, 36, i === 0 ? new Color(54, 38, 27, 248) : new Color(24, 22, 19, 220), 0, 70 - i * 42, T.radius.control);
             this.label(row, entry.title, 14, this.toneColor(entry.tone), -270, 0, 180, 23, true, HorizontalTextAlignment.LEFT);
             this.label(row, entry.body, 11, C.muted, 86, 0, this.width - 330, 22, false, HorizontalTextAlignment.LEFT);
             this.entrance(row, i);
@@ -807,11 +848,10 @@ export class WarCouncilScreen extends Component {
         const guide = this.panel(parent, 'ReplayGuide', 340, 58, C.panelSoft, 180, -15, T.radius.card, C.bronzeSoft);
         this.label(guide, '开场、剧情与引导', 16, C.paper, -75, 10, 166, 24, true, HorizontalTextAlignment.LEFT);
         this.label(guide, '重新查看背景、对话与操作说明', 10, C.muted, -35, -14, 244, 18, false, HorizontalTextAlignment.LEFT);
-        this.label(guide, '重看', 12, C.gold, 128, 0, 58, 20, true);
-        guide.on(Node.EventType.TOUCH_END, () => {
+        this.button(guide, 'ReplayGo', '重看', 128, 0, 64, 26, () => {
             this.openPage('world');
             this.showOpening(true);
-        }, this);
+        });
         this.pressable(guide);
         this.entrance(guide, 3);
         this.button(parent, 'ManualSave', '立即保存', 0, -102, 150, 34, () => {
@@ -1304,7 +1344,7 @@ export class WarCouncilScreen extends Component {
         const steps = [
             {
                 title: '第一步 · 选择军议',
-                body: '右侧三项军议会改变目标、耗粮和胜算。先比较后果，再决定本回合的行动。',
+                body: '右侧三项军议会改变目标、耗粮和胜算。先比较后果，再决定本回合的行动。金框按钮与右缘箭头之处皆可点击。',
                 focus: { x: this.width / 2 - 97, y: 0, w: 184, h: 178 },
                 card: { x: -128, y: 56 }
             },
