@@ -73,7 +73,7 @@ interface BattleOutcome {
 const C = {
     ink: new Color(12, 12, 11, 248),
     inkSoft: new Color(22, 21, 18, 242),
-    panel: new Color(19, 18, 16, 250),
+    panel: new Color(19, 18, 16, 255),
     panelSoft: new Color(35, 30, 24, 244),
     wood: new Color(60, 43, 29, 252),
     bronze: new Color(142, 110, 62, 255),
@@ -408,7 +408,7 @@ export class WarCouncilScreen extends Component {
             if (index > 0) this.rect(this.timelineLayer, `StepRule${index}`, 1, 57, C.bronzeSoft, x - cellW / 2, -10);
             this.label(this.timelineLayer, title, 10, selected ? C.paper : C.muted, x, 7, cellW - 5, 17, selected);
             this.label(this.timelineLayer, value, 11, index === 6 ? C.red : C.gold, x + 14, -17, cellW - 30, 19, true);
-            this.image(this.timelineLayer, `TimelineIcon_${icons[index]}`, `redesign/icons/${icons[index]}/texture`, 18, 18, x - cellW / 2 + 13, -17, 4);
+            this.image(this.timelineLayer, `TimelineIcon_${icons[index]}`, `redesign/icons/${icons[index]}/texture`, 20, 20, x - cellW / 2 + 13, -17, 4);
         });
         const line = this.rect(this.timelineLayer, 'ProgressLine', this.mapWidth - 62, 2, C.gold, 0, -37);
         // 置于皮肤底图之上、内容格之下，进度轨道不被遮挡
@@ -595,7 +595,7 @@ export class WarCouncilScreen extends Component {
         tools.forEach((item, index) => {
             const y = navH / 2 - itemH / 2 - index * itemH;
             const button = this.panel(nav, `Nav_${item.key}`, navW - 2, itemH - 1, item.key === 'world' ? C.cinnabar : new Color(18, 18, 16, 230), 0, y);
-            this.image(button, `NavIcon_${item.key}`, `redesign/icons/${item.icon}/texture`, 19, 19, 0, 8, 4);
+            this.image(button, `NavIcon_${item.key}`, `redesign/icons/${item.icon}/texture`, 21, 21, 0, 8, 4);
             this.label(button, item.label, 10, item.key === 'world' ? C.paper : C.gold, 0, -12, navW - 6, 15, true);
             button.on(Node.EventType.TOUCH_END, () => this.openPage(item.key), this);
             this.pressable(button);
@@ -604,10 +604,10 @@ export class WarCouncilScreen extends Component {
     }
 
     private buildPagePanel(): void {
-        // 模态遮罩：建在 pagePanel 之前 → 渲染于所有世界层（地图/城池标记/顶栏）之上、弹窗之下；
-        // 暗色 scrim 压暗下层页面，空触摸监听吞噬点击，杜绝下层城池标记/战报入口被"点穿"。
-        this.pageMask = this.rect(this.node, 'PageMask', this.width, this.height, new Color(4, 4, 4, 190), 0, 0);
-        this.pageMask.addComponent(UIOpacity).opacity = 0;
+        // 模态遮罩：暗色直接写入填充色（不依赖 UIOpacity 动画，避免透明竞态），active 切换即显示；
+        // 建在 pagePanel 之前 → 渲染于所有世界层（地图/城池标记/顶栏）之上、弹窗之下。
+        // 空触摸监听吞噬点击，杜绝下层城池标记/战报入口被"点穿"。
+        this.pageMask = this.rect(this.node, 'PageMask', this.width, this.height, new Color(3, 3, 3, 202), 0, 0);
         this.pageMask.active = false;
         this.pageMask.on(Node.EventType.TOUCH_START, () => undefined, this);
         this.pageMask.on(Node.EventType.TOUCH_END, () => undefined, this);
@@ -663,21 +663,13 @@ export class WarCouncilScreen extends Component {
         this.animatingEntrance = false;
     }
 
-    /** 弹窗遮罩：与弹窗同步淡入，压暗并锁定下层页面。 */
+    /** 弹窗遮罩：压暗并锁定下层页面（暗色写在填充里，active 切换即显示，稳、无透明竞态）。 */
     private showPageMask(): void {
-        if (!this.pageMask) return;
-        this.pageMask.active = true;
-        const opacity = this.pageMask.getComponent(UIOpacity) ?? this.pageMask.addComponent(UIOpacity);
-        Tween.stopAllByTarget(opacity);
-        opacity.opacity = 0;
-        tween(opacity).to(0.18, { opacity: 255 }).start();
+        if (this.pageMask) this.pageMask.active = true;
     }
 
     private hidePageMask(): void {
-        if (!this.pageMask) return;
-        const opacity = this.pageMask.getComponent(UIOpacity);
-        if (opacity) Tween.stopAllByTarget(opacity);
-        this.pageMask.active = false;
+        if (this.pageMask) this.pageMask.active = false;
     }
 
     private pageHeader(title: string, subtitle: string): Node {
