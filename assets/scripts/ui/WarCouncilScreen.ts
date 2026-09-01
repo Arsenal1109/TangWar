@@ -407,7 +407,7 @@ export class WarCouncilScreen extends Component {
             if (selected) this.panel(this.timelineLayer, 'TargetStep', cellW - 2, 61, new Color(97, 45, 31, 248), x, -10, 1, C.gold, false);
             if (index > 0) this.rect(this.timelineLayer, `StepRule${index}`, 1, 57, C.bronzeSoft, x - cellW / 2, -10);
             this.label(this.timelineLayer, title, 10, selected ? C.paper : C.muted, x, 7, cellW - 5, 17, selected);
-            this.label(this.timelineLayer, value, 11, index === 6 ? C.red : C.gold, x + 8, -17, cellW - 21, 19, true);
+            this.label(this.timelineLayer, value, 11, index === 6 ? C.red : C.gold, x + 14, -17, cellW - 30, 19, true);
             this.image(this.timelineLayer, `TimelineIcon_${icons[index]}`, `redesign/icons/${icons[index]}/texture`, 18, 18, x - cellW / 2 + 13, -17, 4);
         });
         const line = this.rect(this.timelineLayer, 'ProgressLine', this.mapWidth - 62, 2, C.gold, 0, -37);
@@ -571,7 +571,7 @@ export class WarCouncilScreen extends Component {
             const card = this.panel(this.reportBody, `Council_${option.key}`, 178, 48, selected ? new Color(95, 43, 30, 255) : C.panelSoft, 0, 37 - index * 54, T.radius.chip, selected ? C.gold : C.bronzeSoft);
             this.image(card, `CouncilIcon_${option.key}`, `redesign/icons/council-${option.key}/texture`, 31, 31, -66, 0, 4);
             this.label(card, `${option.title}${option.target}`, 14, C.paper, -3, 9, 96, 21, true);
-            this.label(card, option.key === 'defend' ? '城防+20% · 士气-10' : option.key === 'raid' ? '胜率+15% · 行军-1回合' : '粮草+800 · 民心+5', 10, option.key === 'defend' ? C.green : option.key === 'raid' ? C.gold : C.green, 8, -12, 130, 18);
+            this.label(card, option.key === 'defend' ? '城防+20% · 士气-10' : option.key === 'raid' ? '胜率+15% · 行军-1回合' : '粮草+800 · 民心+5', 10, option.key === 'defend' ? C.green : option.key === 'raid' ? C.gold : C.green, 12, -12, 104, 18);
             this.affordance(card, 80, 0);
             card.on(Node.EventType.TOUCH_END, () => this.selectCouncil(option.key), this);
             this.pressable(card);
@@ -595,8 +595,8 @@ export class WarCouncilScreen extends Component {
         tools.forEach((item, index) => {
             const y = navH / 2 - itemH / 2 - index * itemH;
             const button = this.panel(nav, `Nav_${item.key}`, navW - 2, itemH - 1, item.key === 'world' ? C.cinnabar : new Color(18, 18, 16, 230), 0, y);
-            this.image(button, `NavIcon_${item.key}`, `redesign/icons/${item.icon}/texture`, 19, 19, 0, 7, 4);
-            this.label(button, item.label, 10, item.key === 'world' ? C.paper : C.gold, 0, -11, navW - 6, 15, true);
+            this.image(button, `NavIcon_${item.key}`, `redesign/icons/${item.icon}/texture`, 19, 19, 0, 8, 4);
+            this.label(button, item.label, 10, item.key === 'world' ? C.paper : C.gold, 0, -12, navW - 6, 15, true);
             button.on(Node.EventType.TOUCH_END, () => this.openPage(item.key), this);
             this.pressable(button);
             this.navNodes.set(item.key, button);
