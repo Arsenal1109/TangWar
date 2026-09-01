@@ -360,12 +360,12 @@ export class WarCouncilScreen extends Component {
         const ro = ring.addComponent(UIOpacity);
         tween(ring).to(0.9, { scale: new Vec3(1.18, 1.18, 1) }).to(0.9, { scale: Vec3.ONE }).union().repeatForever().start();
         tween(ro).to(0.9, { opacity: 80 }).to(0.9, { opacity: 255 }).union().repeatForever().start();
-        const card = this.skinnedPanel(this.radialLayer, 'TaiyuanDetail', 160, 102, -112, -2, 'card', T.radius.control, C.bronze);
-        this.label(card, '太原', 18, C.gold, -48, 32, 58, 24, true, HorizontalTextAlignment.LEFT);
-        this.label(card, '我方城池', 10, C.muted, 26, 32, 68, 19);
-        this.label(card, '守军  8,000\n城防  68%\n粮草  +600/回合', 11, C.paper, -16, 1, 116, 45, false, HorizontalTextAlignment.LEFT);
-        this.button(card, 'CityRecruit', '调兵', -40, -38, 66, 24, () => this.openPage('army'));
-        this.button(card, 'CityManage', '城内', 40, -38, 66, 24, () => this.openPage('cities'));
+        const card = this.skinnedPanel(this.radialLayer, 'TaiyuanDetail', 170, 106, -112, -4, 'card', T.radius.control, C.bronze);
+        // 城池名由上方地图"太原"标记承担，卡内不再重复标题，避免与别处"太原"叠字
+        this.label(card, '我方城池', 13, C.gold, -14, 32, 130, 22, true);
+        this.label(card, '守军  8,000\n城防  68%\n粮草  +600/回合', 11, C.paper, -14, -2, 150, 46, false, HorizontalTextAlignment.LEFT);
+        this.button(card, 'CityRecruit', '调兵', -41, -40, 68, 24, () => this.openPage('army'));
+        this.button(card, 'CityManage', '城内', 41, -40, 68, 24, () => this.openPage('cities'));
     }
 
     private buildCampaignTimeline(): void {
