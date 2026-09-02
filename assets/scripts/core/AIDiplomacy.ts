@@ -2,6 +2,8 @@ import type { WorldState } from './WorldState';
 import { factionPower, citiesOf } from './WorldState';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
+import { sowDiscord, spreadRumor } from './Stratagem';
+import type { GeneralState } from './GeneralSystem';
 
 /**
  * 群雄外交运行态（引擎无关）：
@@ -161,6 +163,65 @@ export function updateAiDiplomacy(world: WorldState, rng: () => number): EnvoyOf
         }
     }
     return null;
+}
+
+/**
+ * 虎狼暗计：虎狼难度下强势群雄有几率对唐施展离间/谣言（不动玩家资源，只伤将领忠诚与城心）。
+ * 返回战报行（无动作则空数组）。
+ */
+export function applyAiSchemes(world: WorldState, rng: () => number): string[] {
+    if (world.difficulty !== 'hard') {
+        return [];
+    }
+    const tangPower = factionPower(world, 'tang');
+    if (tangPower <= 0) {
+        return [];
+    }
+    const schemers = activeAiFactions(world).filter((f) => {
+        if (isTrucedWithTang(world, f)) {
+            return false;
+        }
+        return factionPower(world, f) > tangPower * 0.6; // 有实力才玩阴的
+    });
+    if (schemers.length === 0 || rng() >= 0.18 * difficultyOf(world.difficulty).aiAggression) {
+        return [];
+    }
+    const f = schemers[Math.floor(rng() * schemers.length) % schemers.length];
+    const name = getFaction(f).name;
+    // 二选一：离间守将（有守将的唐城）或谣言扰民
+    const garrisoned = world.cities.filter((c) => c.faction === 'tang' && c.generalId);
+    const useDiscord = garrisoned.length > 0 && rng() < 0.5;
+    if (useDiscord) {
+        const city = garrisoned[Math.floor(rng() * garrisoned.length) % garrisoned.length];
+        const general: GeneralState | undefined = world.generals.find((g) => g.id === city.generalId);
+        if (!general) {
+            return [];
+        }
+        const result = sowDiscord(general, 75, 200, rng); // 敌谋士按 75 谋略计，耗其府库 200 金
+        if (result.ok) {
+            const msg = `${name}施离间计，${general.name}忠诚下降`;
+            world.log.push(msg);
+            return [msg];
+        }
+        const fail = `${name}谋离间${general.name}，事泄不成`;
+        world.log.push(fail);
+        return [fail];
+    }
+    const cities = citiesOf(world, 'tang');
+    if (cities.length === 0) {
+        return [];
+    }
+    const city = cities[Math.floor(rng() * cities.length) % cities.length];
+    const result = spreadRumor(city.morale, 75, 120, rng);
+    if (result.ok && result.moraleDelta) {
+        city.morale = Math.max(0, city.morale + result.moraleDelta);
+        const msg = `${name}散布流言，${city.name}民心动摇`;
+        world.log.push(msg);
+        return [msg];
+    }
+    const fail = `${name}遣细作散布流言，被${city.name}百姓识破`;
+    world.log.push(fail);
+    return [fail];
 }
 
 /** 玩家对要约的抉择：接受/回绝，直接结算停战、纳贡与邦交。 */

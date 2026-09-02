@@ -4,7 +4,7 @@ import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
 import { tickWorldMarches } from './MarchSystem';
-import { tickPacts, updateAiDiplomacy, type EnvoyOffer } from './AIDiplomacy';
+import { tickPacts, updateAiDiplomacy, applyAiSchemes, type EnvoyOffer } from './AIDiplomacy';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
 
@@ -60,13 +60,14 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
 
     const ev = checkHistoricalEvents(world);
 
-    // 群雄外交推演：合纵结盟写日志，遣使要约交玩家抉择
+    // 虎狼暗计（离间/谣言）→ 群雄外交推演：合纵结盟写日志，遣使要约交玩家抉择
+    const schemes = applyAiSchemes(world, rand);
     const envoy = updateAiDiplomacy(world, rand);
 
     const victory = checkVictory(world);
 
     const out: TurnOutcome = {
-        log: [...world.log],
+        log: [...world.log, ...schemes],
         eventNames: ev.names,
         victory: victory.finished ? victory : null,
         alerts,

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createWorld } from '../assets/scripts/core/WorldState';
 import { createCityStates } from '../assets/scripts/core/CityRegistry';
+import { createGeneralStates } from '../assets/scripts/core/GeneralSystem';
 import { decideFactions, applyAiActions } from '../assets/scripts/core/AI';
 import { runWorldTurn } from '../assets/scripts/core/TurnFlow';
 import {
-    tickPacts, updateAiDiplomacy, resolveEnvoy, isTrucedWithTang
+    tickPacts, updateAiDiplomacy, resolveEnvoy, isTrucedWithTang, applyAiSchemes
 } from '../assets/scripts/core/AIDiplomacy';
 import { serializeSave, applySave } from '../assets/scripts/core/SaveSystem';
 import { getFaction } from '../assets/scripts/data/Factions';
@@ -14,7 +15,7 @@ const HIGH = () => 0.99;
 
 /** 构造 liu（刘武周）只剩马邑、其余天下尽归唐土的孤立局面（唯一 AI 势力，随机分支可预测） */
 function liuCorneredWorld() {
-    const world = createWorld(618, createCityStates());
+    const world = createWorld(618, createCityStates(), createGeneralStates());
     for (const c of world.cities) {
         if (c.id !== 'mayi') {
             c.faction = c.id === 'mayi' ? 'liu' : 'tang';
@@ -221,5 +222,67 @@ describe('AIDiplomacy 持久化与回合流', () => {
         expect(world.pacts.truces.liu).toBeUndefined();
         // TurnOutcome 携带 envoy 字段
         expect('envoy' in out).toBe(true);
+    });
+});
+
+describe('AIDiplomacy 虎狼暗计', () => {
+    function hardWorld() {
+        const world = liuCorneredWorld();
+        world.difficulty = 'hard';
+        for (const c of world.cities) {
+            if (c.faction === 'liu') c.army = 20000;
+            else if (c.faction === 'tang') c.army = 1000;
+        }
+        return world;
+    }
+
+    it('虎狼难度下强势群雄会施计：成功离间降忠诚、失败也写战报', () => {
+        const world = hardWorld();
+        const tangCity = world.cities.find((c) => c.faction === 'tang')!;
+        tangCity.generalId = 'lijng';
+        const general = world.generals.find((g) => g.id === 'lijng')!;
+        const loyaltyBefore = general.loyalty;
+        // 序列：施计门槛 rng<0.288 ✓(0.05) → 选离间(0.05<0.5 ✓) → 城池/将领索引(0.05) → sowDiscord roll(0.05 必中)
+        let calls = 0;
+        const seq = () => 0.05;
+        const lines = applyAiSchemes(world, seq);
+        expect(lines.length).toBe(1);
+        expect(lines[0]).toContain('离间计');
+        expect(general.loyalty).toBeLessThan(loyaltyBefore);
+        expect(world.log.some((l) => l.includes('离间'))).toBe(true);
+    });
+
+    it('史实与休明难度不施暗计', () => {
+        for (const diff of ['normal', 'easy'] as const) {
+            const world = hardWorld();
+            world.difficulty = diff;
+            expect(applyAiSchemes(world, LOW)).toEqual([]);
+        }
+    });
+
+    it('停战中的势力不施暗计；弱势群雄无计可施', () => {
+        const world = hardWorld();
+        world.pacts.truces.liu = 5;
+        expect(applyAiSchemes(world, LOW)).toEqual([]);
+        // 弱势：liu 兵力低于 0.6×唐军
+        const weak = hardWorld();
+        for (const c of weak.cities) {
+            if (c.faction === 'liu') c.army = 100;
+        }
+        expect(applyAiSchemes(weak, LOW)).toEqual([]);
+    });
+
+    it('谣言路径：无守将时改为散布流言降民心', () => {
+        const world = hardWorld();
+        // 全部唐城无守将 → 走谣言分支
+        for (const c of world.cities) {
+            if (c.faction === 'tang') c.generalId = null;
+        }
+        const moraleBefore = world.cities.filter((c) => c.faction === 'tang').reduce((s, c) => s + c.morale, 0);
+        const lines = applyAiSchemes(world, () => 0.05);
+        expect(lines.length).toBe(1);
+        expect(lines[0]).toContain('流言');
+        const moraleAfter = world.cities.filter((c) => c.faction === 'tang').reduce((s, c) => s + c.morale, 0);
+        expect(moraleAfter).toBe(moraleBefore - 6);
     });
 });
