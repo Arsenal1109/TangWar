@@ -159,7 +159,7 @@ export class Bootstrap extends Component {
         // 新版首屏把原本分散的地图、详情卡和五项导航收束成一个完整回合决策流。
         const screen = new Node('WarCouncilScreen');
         this.uiRoot.addChild(screen);
-        screen.addComponent(WarCouncilScreen).init(this.turns, this.bus, this.cityStates, this.world);
+        screen.addComponent(WarCouncilScreen).init(this.turns, this.bus, this.cityStates, this.world, this.saveMgr);
 
         // 音效管理仍沿用原有事件总线，后续可直接替换真实音频资源。
         this.node.addComponent(SoundManager).init(this.bus);

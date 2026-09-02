@@ -37,6 +37,8 @@ import type { WorldState } from '../core/WorldState';
 import { TurnManager } from '../core/TurnManager';
 import { createWorld } from '../core/WorldState';
 import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
+import { AUTO_SLOT } from '../core/SaveSlots';
+import type { SaveManager } from './SaveManager';
 import { FACTIONS } from '../data/Factions';
 import { GENERALS } from '../data/Generals';
 import { POLICIES } from '../data/Policies';
@@ -188,6 +190,7 @@ export class WarCouncilScreen extends Component {
     ];
     private eraLabel!: Label;
     private difficultyLabel!: Label;
+    private saveMgr: SaveManager | null = null;
     private headerNode!: Node;
     private resNumbers: Record<'food' | 'gold' | 'army' | 'morale', Label> = {} as Record<'food' | 'gold' | 'army' | 'morale', Label>;
     private toastLabel!: Label;
@@ -226,13 +229,14 @@ export class WarCouncilScreen extends Component {
     private panelSkins = new Map<string, SpriteFrame>();
     private pendingSkins: Array<{ node: Node; skin: string }> = [];
 
-    init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[], world?: WorldState): this {
+    init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[], world?: WorldState, saveMgr?: SaveManager): this {
         this.turns = turns;
         this.bus = bus;
         this.states = states;
         // 世界态（将领/外交/行军）由 Bootstrap 注入并随存档恢复；缺省时自建（预览/单测兜底）
         this.world = world ?? createWorld(617, states, [], createDiplomacyState('tang'));
         this.diplomacy = this.world.diplomacy;
+        this.saveMgr = saveMgr ?? null;
         this.build();
         this.bus.on('turn-advanced', () => {
             this.refreshHeader();
@@ -1300,11 +1304,64 @@ export class WarCouncilScreen extends Component {
         this.pressable(guide);
         this.entrance(guide, 3);
         const saveBar = this.panel(parent, 'SaveBar', bodyW - 120, 38, new Color(45, 35, 25, 238), 0, -101, T.radius.control, C.bronzeSoft, false);
-        this.label(saveBar, '设置将在当前战局中立即生效', 10, C.muted, -95, 0, 250, 18, true, HorizontalTextAlignment.LEFT);
+        this.label(saveBar, '设置将在当前战局中立即生效 · 手动档不随「重开新局」清除', 10, C.muted, -95, 0, 320, 18, true, HorizontalTextAlignment.LEFT);
         this.button(saveBar, 'ManualSave', '立即保存', 140, 0, 120, 30, () => {
             this.bus.emit('save-requested', {});
             this.showToast('进度已保存', 'good');
         });
+        // —— 存档槽管理：自动档 + 手动三槽，可存/读/删 ——
+        const slots = this.saveMgr ? this.saveMgr.listSlots() : [];
+        const slotY0 = -152;
+        slots.forEach((sum, i) => {
+            const isAuto = sum.slot === AUTO_SLOT;
+            const y = slotY0 - i * 46;
+            const row = this.panel(parent, `SaveSlot_${sum.slot}`, bodyW - 120, 42, new Color(26, 23, 19, 244), 0, y, T.radius.control, isAuto ? C.gold : C.bronzeSoft, false);
+            this.rect(row, 'SlotAccent', 4, 32, isAuto ? C.cinnabar : C.green, -(bodyW - 120) / 2 + 6, 0, 2);
+            const name = isAuto ? '自动档' : `手动档 ${sum.slot.replace('slot', '')}`;
+            const info = sum.empty ? '空' : `${TurnManager.eraName(sum.year)} ${['春', '夏', '秋', '冬'][sum.seasonIndex] ?? ''} · 唐${sum.tangCities}/${sum.totalCities}城 · ${difficultyOf(sum.difficulty).name}`;
+            this.label(row, name, 13, isAuto ? C.gold : C.paper, -(bodyW - 120) / 2 + 18, 0, 78, 20, true, HorizontalTextAlignment.LEFT);
+            this.label(row, info, 10, sum.empty ? C.muted : C.muted, -(bodyW - 120) / 2 + 96, 0, 220, 18, false, HorizontalTextAlignment.LEFT);
+            if (isAuto) {
+                this.label(row, '回合推进自动记录', 9, C.bronze, (bodyW - 120) / 2 - 120, 0, 130, 16, true);
+            } else {
+                const hasData = !sum.empty;
+                this.button(row, `SlotSave_${sum.slot}`, '存', (bodyW - 120) / 2 - 150, 0, 44, 24, () => {
+                    this.bus.emit('save-requested', {});
+                    this.saveMgr!.saveTo(sum.slot, this.world);
+                    this.showToast(`${name}已保存`, 'good');
+                    this.renderPageAgain('settings');
+                });
+                this.button(row, `SlotLoad_${sum.slot}`, '读', (bodyW - 120) / 2 - 100, 0, 44, 24, hasData ? () => {
+                    this.loadFromSlot(sum.slot, name);
+                } : undefined);
+                this.button(row, `SlotDel_${sum.slot}`, '删', (bodyW - 120) / 2 - 50, 0, 44, 24, hasData ? () => {
+                    this.saveMgr!.removeFrom(sum.slot);
+                    this.showToast(`${name}已删除`, 'normal');
+                    this.renderPageAgain('settings');
+                } : undefined);
+            }
+            this.entrance(row, i);
+        });
+    }
+
+    /** 从手动槽读档：同步回合运行态并整页刷新。 */
+    private loadFromSlot(slot: string, name: string): void {
+        if (!this.saveMgr) return;
+        if (!this.saveMgr.loadFrom(slot, this.world)) {
+            this.showToast('读档失败：存档版本不兼容', 'bad');
+            return;
+        }
+        this.turns.year = this.world.year;
+        this.turns.seasonIndex = this.world.seasonIndex;
+        this.turns.turn = this.world.turn;
+        this.diplomacy = this.world.diplomacy;
+        this.marchPanelOpen = false;
+        this.refreshHeader();
+        this.refreshCityCardStats();
+        this.refreshTimeline();
+        this.buildRoute();
+        this.openPage('world');
+        this.showToast(`已读取${name} · ${TurnManager.eraName(this.world.year)}`, 'good');
     }
 
     private selectCouncil(key: CouncilKey): void {
