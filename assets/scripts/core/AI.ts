@@ -4,6 +4,7 @@ import { getFaction } from '../data/Factions';
 import { neighborsOf } from '../data/Cities';
 import { resolveBattle } from './BattleSystem';
 import { removeArmy } from './Army';
+import { difficultyOf } from './Difficulty';
 import type { FactionPersonality } from './Types';
 
 export type AiActionKind = 'expand' | 'reinforce';
@@ -95,7 +96,7 @@ export function decideFactions(world: WorldState, rng?: () => number): AiAction[
         if (factionPower(world, f) <= 0) {
             continue;
         }
-        const charm = EXPAND_CHANCE[def.personality];
+        const charm = EXPAND_CHANCE[def.personality] * difficultyOf(world.difficulty).aiAggression;
         const target = adjacentTarget(world, f);
         const source = target ? expeditionSource(world, f, target.id) : null;
         if (rand() < charm && target && source) {

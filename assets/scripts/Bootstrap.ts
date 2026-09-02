@@ -9,6 +9,7 @@ import { createWorld, type WorldState } from './core/WorldState';
 import { runWorldTurn } from './core/TurnFlow';
 import { createGeneralStates } from './core/GeneralSystem';
 import { createDiplomacyState } from './core/Diplomacy';
+import { applyDifficultyStart } from './core/Difficulty';
 import type { CityState } from './core/ResourceSystem';
 
 const { ccclass } = _decorator;
@@ -24,6 +25,8 @@ export interface GameEvents {
     'game-ended': { grade: string; message: string };
     /** 通用音效通道：SoundManager 按需播放（sounds/* 资源缺失时优雅降级） */
     'sfx': { name: 'turn' | 'select' | 'march' | 'battle' | 'report' | 'alert' | 'scheme' | 'diplomacy' };
+    /** 新局难度选定（首启无档时由难度弹窗发出；此后存档承载） */
+    'difficulty-chosen': { difficulty: 'easy' | 'normal' | 'hard' };
 }
 
 @ccclass('Bootstrap')
@@ -53,6 +56,7 @@ export class Bootstrap extends Component {
                 this.turns.seasonIndex = this.world.seasonIndex;
                 this.turns.turn = this.world.turn;
             }
+            // 新局（无档）难度由 UI 弹窗选定后经 difficulty-chosen 应用并建档；缺省标准。
 
             this.uiRoot = this.ensureUiCanvas();
             this.buildUi();
@@ -164,6 +168,13 @@ export class Bootstrap extends Component {
             this.world.year = this.turns.year;
             this.world.seasonIndex = this.turns.seasonIndex;
             this.world.turn = this.turns.getTurnNumber();
+            this.saveMgr.save(this.world);
+        });
+
+        // 新局难度选定：补发初始资源调整（按标准建档后的一次性修正），随即建档固化
+        this.bus.on('difficulty-chosen', ({ difficulty }) => {
+            this.world.difficulty = difficulty;
+            applyDifficultyStart(this.world, difficulty);
             this.saveMgr.save(this.world);
         });
 

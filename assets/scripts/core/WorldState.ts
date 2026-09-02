@@ -2,6 +2,7 @@ import type { CityState } from './ResourceSystem';
 import type { GeneralState } from './GeneralSystem';
 import type { DiplomacyState } from './Diplomacy';
 import type { MarchOrder } from './MarchSystem';
+import type { DifficultyId } from './Difficulty';
 
 // 全局运行态：城池 + 年月 + 历史分支标志 + 每回合战报
 export interface WorldState {
@@ -15,6 +16,8 @@ export interface WorldState {
     diplomacy: DiplomacyState;
     /** 进行中的行军令（调兵/出征） */
     marches: MarchOrder[];
+    /** 难度分级：影响群雄攻性与经济；存档 v2 起持久化，旧档缺省 standard */
+    difficulty: DifficultyId;
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }
@@ -24,7 +27,8 @@ export function createWorld(
     cities: CityState[],
     generals: GeneralState[] = [],
     diplomacy?: DiplomacyState,
-    marches: MarchOrder[] = []
+    marches: MarchOrder[] = [],
+    difficulty: DifficultyId = 'normal'
 ): WorldState {
     return {
         year,
@@ -34,6 +38,7 @@ export function createWorld(
         generals,
         diplomacy: diplomacy ?? { relations: {}, allies: [], atWar: [] },
         marches,
+        difficulty,
         flags: {},
         log: []
     };

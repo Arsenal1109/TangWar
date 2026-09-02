@@ -51,6 +51,8 @@ export interface SaveData {
     generals?: SaveGeneral[];
     diplomacy?: SaveDiplomacy;
     marches?: SaveMarch[];
+    /** v2 起可选：难度分级；旧档缺省回落标准 */
+    difficulty?: string;
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -88,7 +90,8 @@ export function serializeSave(world: WorldState): SaveData {
             speed: m.speed,
             command: m.command,
             faction: m.faction
-        }))
+        })),
+        difficulty: world.difficulty
     };
 }
 
@@ -160,5 +163,9 @@ export function applySave(world: WorldState, data: SaveData): void {
     applyGenerals(world, data.generals);
     applyDiplomacy(world, data.diplomacy);
     applyMarches(world, data.marches);
+    // 旧档/异常值回落标准难度
+    world.difficulty = (data.difficulty === 'easy' || data.difficulty === 'normal' || data.difficulty === 'hard')
+        ? data.difficulty
+        : 'normal';
     world.log = [];
 }

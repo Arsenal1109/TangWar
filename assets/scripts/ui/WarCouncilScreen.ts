@@ -36,6 +36,7 @@ import type { CityState } from '../core/ResourceSystem';
 import type { WorldState } from '../core/WorldState';
 import { TurnManager } from '../core/TurnManager';
 import { createWorld } from '../core/WorldState';
+import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
 import { FACTIONS } from '../data/Factions';
 import { GENERALS } from '../data/Generals';
 import { POLICIES } from '../data/Policies';
@@ -185,6 +186,7 @@ export class WarCouncilScreen extends Component {
         { title: '河东乡勇请附', body: '若先安抚地方，可提升民心并获得兵源。', tone: 'good' }
     ];
     private eraLabel!: Label;
+    private difficultyLabel!: Label;
     private headerNode!: Node;
     private resNumbers: Record<'food' | 'gold' | 'army' | 'morale', Label> = {} as Record<'food' | 'gold' | 'army' | 'morale', Label>;
     private toastLabel!: Label;
@@ -308,7 +310,54 @@ export class WarCouncilScreen extends Component {
         this.refreshReport();
         this.refreshHeader();
         this.playIntro();
-        this.showOpening();
+        // 新局（无档）先选难度再进序章；有档直接按存档难度开局。
+        if (!this.hasSave) {
+            this.showDifficultyChoice();
+        } else {
+            this.showOpening();
+        }
+    }
+
+    /** 是否存在自动存档（决定新局难度弹窗是否出现）。 */
+    private get hasSave(): boolean {
+        return sys.localStorage.getItem('tangwar_save_v1') != null;
+    }
+
+    /** 新局难度选择：三张军令牌（休明/史实/虎狼），选定后立即建档并进入序章。 */
+    private showDifficultyChoice(): void {
+        this.removeGuide();
+        const layer = this.container(this.node, 'DifficultyChoice', this.width, this.height, 32);
+        layer.setPosition(0, 0, 32);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+        this.image(layer, 'DiffMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'DiffShade', this.width, this.height, new Color(4, 4, 4, 226), 0, 0);
+        this.label(layer, '太原誓师 · 请定难度', 14, C.gold, 0, 128, 420, 22, true);
+        this.label(layer, '不同难度下，群雄的野心与府库截然不同', 13, C.muted, 0, 104, 460, 20, true);
+        DIFFICULTY_ORDER.forEach((id, i) => {
+            const def = difficultyOf(id);
+            const x = -186 + i * 186;
+            const tone = id === 'hard' ? C.cinnabar : id === 'easy' ? C.green : C.gold;
+            const card = this.panel(layer, `Diff_${id}`, 168, 148, new Color(22, 20, 17, 248), x, 8, T.radius.card, tone, false);
+            this.rect(card, 'DiffAccent', 4, 116, tone, -76, 0, 2);
+            this.label(card, def.name, 22, C.paper, 0, 48, 148, 30, true);
+            this.label(card, def.desc, 10, C.muted, 0, 2, 140, 58, false);
+            const tag = id === 'hard' ? '四面楚歌' : id === 'easy' ? '天命所归' : '逐鹿中原';
+            this.label(card, tag, 11, tone, 0, -52, 148, 18, true);
+            card.on(Node.EventType.TOUCH_END, () => {
+                this.world.difficulty = id;
+                applyDifficultyStart(this.world, id);
+                this.bus.emit('difficulty-chosen', { difficulty: id });
+                this.bus.emit('sfx', { name: 'diplomacy' });
+                this.showToast(`难度已定：${def.name}`, 'normal');
+                this.removeGuide();
+                this.showOpening();
+            }, this);
+            this.pressable(card);
+            this.entrance(card, i);
+        });
+        this.label(layer, '难度将写入存档，本局不可更改', 10, C.bronze, 0, -110, 420, 18, true);
     }
 
     private buildMap(): void {
@@ -349,7 +398,7 @@ export class WarCouncilScreen extends Component {
         const seal = this.panel(header, 'TangSeal', 30, 30, C.cinnabar, -this.width / 2 + leftSafe, contentY, 15, C.gold);
         this.label(seal, '唐', 17, C.paper, 0, 0, 27, 25, true);
         this.eraLabel = this.label(header, '', 16, C.gold, -this.width / 2 + leftSafe + 98, contentY + 7, 160, 22, false, HorizontalTextAlignment.LEFT);
-        this.label(header, '唐 · 李渊', 11, C.muted, -this.width / 2 + leftSafe + 98, contentY - 9, 160, 18, false, HorizontalTextAlignment.LEFT);
+        this.difficultyLabel = this.label(header, '', 11, C.muted, -this.width / 2 + leftSafe + 98, contentY - 9, 160, 18, false, HorizontalTextAlignment.LEFT);
         this.buildResourceStrip(header, contentY);
         this.rect(header, 'TopBarRule', this.width - 12, 1, new Color(226, 190, 111, 76), 0, -headerH / 2 + 2);
     }
@@ -1458,6 +1507,7 @@ export class WarCouncilScreen extends Component {
 
     private refreshHeader(): void {
         this.eraLabel.string = `${TurnManager.eraName(this.turns.year)} · ${this.turns.getSeason()}`;
+        this.difficultyLabel.string = `唐 · 李渊 · ${difficultyOf(this.world.difficulty).name}局`;
         const own = this.states.filter((city) => city.faction === 'tang');
         const food = own.reduce((sum, city) => sum + city.food, 0);
         const gold = own.reduce((sum, city) => sum + city.gold, 0);

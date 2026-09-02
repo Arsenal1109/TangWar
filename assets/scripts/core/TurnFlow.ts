@@ -5,6 +5,7 @@ import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
 import { tickWorldMarches } from './MarchSystem';
 import { getFaction } from '../data/Factions';
+import { difficultyOf } from './Difficulty';
 
 export interface TurnOutcome {
     log: string[];
@@ -40,6 +41,16 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
     const res = resolveTurn(world.cities);
     for (const e of res.events) {
         world.log.push(e.message);
+    }
+    // 难度补贴：给群雄城池每季发放粮金（休明 0 / 史实 30 / 虎狼 70），滚出 AI 经济雪球
+    const stipend = difficultyOf(world.difficulty).aiStipend;
+    if (stipend > 0) {
+        for (const c of world.cities) {
+            if (c.faction !== 'tang') {
+                c.gold += stipend;
+                c.food += stipend;
+            }
+        }
     }
 
     const ev = checkHistoricalEvents(world);
