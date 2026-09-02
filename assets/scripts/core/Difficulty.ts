@@ -23,7 +23,7 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyDef> = {
         id: 'easy',
         name: '休明',
         desc: '群雄内争不休，唐室府库充盈——适合熟悉玩法',
-        aiAggression: 0.6,
+        aiAggression: 0.5,
         aiStipend: 0,
         playerStart: 1.5
     },

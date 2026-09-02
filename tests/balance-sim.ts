@@ -8,6 +8,7 @@ import { createWorld } from '../assets/scripts/core/WorldState';
 import { createCityStates } from '../assets/scripts/core/CityRegistry';
 import { createGeneralStates } from '../assets/scripts/core/GeneralSystem';
 import { createDiplomacyState } from '../assets/scripts/core/Diplomacy';
+import { applyDifficultyStart, type DifficultyId } from '../assets/scripts/core/Difficulty';
 import { runWorldTurn } from '../assets/scripts/core/TurnFlow';
 import { executeCouncilOrder, raidOdds } from '../assets/scripts/core/CommandSystem';
 import { checkVictory } from '../assets/scripts/core/Victory';
@@ -22,7 +23,7 @@ interface SimResult {
     finalYear: number;
 }
 
-function playGame(seed: number): SimResult {
+function playGame(seed: number, difficulty: DifficultyId = 'normal'): SimResult {
     let s = seed;
     const rng = (): number => {
         // mulberry32
@@ -32,6 +33,8 @@ function playGame(seed: number): SimResult {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
     const world = createWorld(617, createCityStates(), createGeneralStates(), createDiplomacyState());
+    world.difficulty = difficulty;
+    applyDifficultyStart(world, difficulty);
     const captures: string[] = [];
     const aiCaptures: string[] = [];
     let owned = new Set(world.cities.filter((c) => c.faction === 'tang').map((c) => c.id));
@@ -64,30 +67,26 @@ function playGame(seed: number): SimResult {
     return { turns: 120, grade: 'timeout', tangCitiesEnd: owned.size, aiCapturesEnd: aiCaptures.length, captures, aiCaptures, finalYear: world.year };
 }
 
+const difficulties: DifficultyId[] = ['easy', 'normal', 'hard'];
 const N = 200;
-const grades: Record<string, number> = {};
-let totalTurns = 0;
-let totalCaptures = 0;
-let totalAiCaptures = 0;
-let maxTangCities = 0;
-const captureCount: Record<string, number> = {};
-for (let i = 0; i < N; i++) {
-    const r = playGame(1000 + i * 7919);
-    grades[r.grade] = (grades[r.grade] ?? 0) + 1;
-    totalTurns += r.turns;
-    totalCaptures += r.captures.length;
-    totalAiCaptures += r.aiCaptures.length;
-    maxTangCities = Math.max(maxTangCities, r.tangCitiesEnd);
-    for (const c of r.captures) {
-        captureCount[c] = (captureCount[c] ?? 0) + 1;
+for (const diff of difficulties) {
+    const grades: Record<string, number> = {};
+    let totalTurns = 0;
+    let totalCaptures = 0;
+    let totalAiCaptures = 0;
+    let maxTangCities = 0;
+    for (let i = 0; i < N; i++) {
+        const r = playGame(1000 + i * 7919, diff);
+        grades[r.grade] = (grades[r.grade] ?? 0) + 1;
+        totalTurns += r.turns;
+        totalCaptures += r.captures.length;
+        totalAiCaptures += r.aiCaptures.length;
+        maxTangCities = Math.max(maxTangCities, r.tangCitiesEnd);
     }
+    const winRate = ((grades['unify'] ?? 0) + (grades['reign'] ?? 0)) / N * 100;
+    const loseRate = ((grades['defeat'] ?? 0) + (grades['decline'] ?? 0)) / N * 100;
+    console.log(`\n=== ${diff} · ${N} 局×120回合（贪心：胜算≥55% 即突袭） ===`);
+    console.log('结局分布:', grades);
+    console.log(`平均局长: ${(totalTurns / N).toFixed(1)} 回合  夺城 ${(totalCaptures / N).toFixed(2)}  失城 ${(totalAiCaptures / N).toFixed(2)}  峰值唐土 ${maxTangCities}/22`);
+    console.log(`胜局率: ${winRate.toFixed(1)}%  负局率: ${loseRate.toFixed(1)}%`);
 }
-console.log(`=== ${N} 局×120回合模拟（贪心策略：胜算≥55% 即突袭） ===`);
-console.log('结局分布:', grades);
-console.log(`平均局长: ${(totalTurns / N).toFixed(1)} 回合`);
-console.log(`平均玩家夺城: ${(totalCaptures / N).toFixed(2)}  平均失城: ${(totalAiCaptures / N).toFixed(2)}`);
-console.log(`单局唐土峰值: ${maxTangCities} / 22 城`);
-console.log('夺城分布:', captureCount);
-const winRate = ((grades['unify'] ?? 0) + (grades['reign'] ?? 0)) / N * 100;
-const loseRate = ((grades['defeat'] ?? 0) + (grades['decline'] ?? 0)) / N * 100;
-console.log(`胜局率(统一+贞观): ${winRate.toFixed(1)}%  负局率(偏安+覆亡): ${loseRate.toFixed(1)}%`);
