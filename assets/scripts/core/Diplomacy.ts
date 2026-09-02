@@ -53,7 +53,7 @@ export function createDiplomacyState(playerFaction = 'tang'): DiplomacyState {
     relations.wu = 0;
     relations.shen = 0;
     relations.lin = 0;
-    return { relations, allies: [], atWar: ['sui', 'liu'] };
+    return { relations, allies: [], atWar: ['sui', 'liu'], marriedAllies: [] };
 }
 
 export function performDiplo(

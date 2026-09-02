@@ -22,6 +22,11 @@ export interface SaveCity {
 export interface SaveGeneral {
     id: string;
     loyalty: number;
+    /** 运行态阵营（招募/俘将/叛离会改写）；v2.2 起持久化，旧档缺省回落初始值 */
+    faction?: string;
+    /** 授职驻城（都督府/守将任用的前置）；v2.2 起持久化 */
+    assignmentCityId?: string | null;
+    assignmentRole?: 'governor' | 'commander' | null;
 }
 
 export interface SaveDiplomacy {
@@ -86,7 +91,13 @@ export function serializeSave(world: WorldState): SaveData {
             facilities: { ...c.facilities },
             troops: { ...c.troops }
         })),
-        generals: world.generals.map((g) => ({ id: g.id, loyalty: g.loyalty })),
+        generals: world.generals.map((g) => ({
+            id: g.id,
+            loyalty: g.loyalty,
+            faction: g.faction,
+            assignmentCityId: g.assignment?.cityId ?? null,
+            assignmentRole: g.assignment?.role ?? null
+        })),
         diplomacy: {
             relations: { ...world.diplomacy.relations },
             allies: [...world.diplomacy.allies],
@@ -118,16 +129,32 @@ export function serializeSave(world: WorldState): SaveData {
 }
 
 function applyGenerals(world: WorldState, data: SaveGeneral[] | undefined): void {
-    // v1 存档无将领运行态：沿用世界构造时的默认忠诚
+    // v1 存档无将领运行态：沿用世界构造时的默认阵营与忠诚
     if (!data) {
         return;
     }
+    const cityIds = new Set(world.cities.map((c) => c.id));
+    const savedIds = new Set<string>();
     for (const g of data) {
         const state = world.generals.find((item) => item.id === g.id);
-        if (state) {
-            state.loyalty = g.loyalty;
+        if (!state) {
+            continue;
+        }
+        savedIds.add(g.id);
+        state.loyalty = g.loyalty;
+        // v2.2 起持久化运行态阵营；旧档缺省回落初始阵营
+        if (typeof g.faction === 'string' && /^[a-z]+$/.test(g.faction)) {
+            state.faction = g.faction;
+        }
+        // 授职回填：城池须存在，否则卸任（都督府失效自清会在下回合兜底）
+        if (g.assignmentCityId != null && cityIds.has(g.assignmentCityId) && (g.assignmentRole === 'governor' || g.assignmentRole === 'commander')) {
+            state.assignment = { cityId: g.assignmentCityId, role: g.assignmentRole };
+        } else {
+            state.assignment = null;
         }
     }
+    // 阵亡/遁走/被除名的将领不再复活
+    world.generals = world.generals.filter((g) => savedIds.has(g.id));
 }
 
 function applyDiplomacy(world: WorldState, data: SaveDiplomacy | undefined): void {
