@@ -97,8 +97,7 @@ export class SoundManager extends Component {
         // 首次访问：异步加载，缺失（无音频资源）时缓存 null 并降级日志
         resources.load(path, AudioClip, (err, c) => {
             if (err) {
-                this.clips.set(path, null);
-                console.log(`[音效] ${path}（无资源，已降级）`);
+                this.clips.set(path, null); // 无音频资源：缓存降级结果，不再重试
                 return;
             }
             this.clips.set(path, c);
@@ -108,10 +107,9 @@ export class SoundManager extends Component {
 
     private playClip(clip: AudioClip | null, path: string): void {
         if (!this.sfxSource || !clip) {
-            console.log(`[音效] ${path.split('/').pop()}`);
-            return;
+            return; // 音源未就绪或资源缺失：静默降级
         }
-        // 逐音效独立播放，不打断当前；未被 use 时优雅降级
+        // 逐音效独立播放，不打断当前
         this.sfxSource.playOneShot(clip);
     }
 }

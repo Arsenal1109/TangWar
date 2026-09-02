@@ -35,20 +35,25 @@ npm test
 
 ## 项目结构
 
-- `assets/scripts/data/`：势力、城池、将领数据表（引擎无关）
+- `assets/scripts/data/`：势力、城池（含邻接图）、将领数据表（引擎无关）
 - `assets/scripts/core/`：回合、资源结算、事件总线、军议结算（引擎无关）
 - `assets/scripts/core/CommandSystem.ts`：军议三令真实结算引擎（战斗/夺城/伏兵/胜算）
+- `assets/scripts/core/AI.ts`：群雄决策（邻接约束远征军攻城 / 边境养锐）
+- `assets/scripts/core/TurnFlow.ts`：回合装配（行军→AI→资源→事件→急报→胜负）
 - `assets/resources/redesign/`：新版沙盘战图与人物立绘资源
 - `assets/resources/redesign/panels/`：九宫格皮肤贴图（panel/card/button 三套，程序化生成）
 - `assets/resources/redesign/effects/`：氛围特效贴图（暖光/云影/扫光条，程序化生成）
 - `assets/resources/fonts/`：霞鹜文楷子集字体（替换系统 serif）
+- `assets/resources/sounds/`：军旅音效八件套（`tools/gen-sfx.py` 程序化生成，可直接同名替换正式素材）
 - `assets/scripts/map/`：传统舆图渲染与交互（保留模块）
 - `assets/scripts/ui/WarCouncilScreen.ts`：军议、路线预演、传令、战报与动效主循环
-- `tools/`：UI 资产生成脚本（`gen-panels.mjs`、`gen-effects.mjs`、`extract-charset.mjs`、`subset-font.sh`、`typecheck.sh`）
+- `tools/`：UI 资产生成脚本（`gen-panels.mjs`、`gen-effects.mjs`、`gen-sfx.py`、`extract-charset.mjs`、`subset-font.sh`、`typecheck.sh`）
+- `tests/balance-sim.ts`：蒙特卡洛平衡模拟（`npx vite-node balance-sim.ts`，回放整局统计结局分布）
 - `docs/superpowers/`：设计文档与实现计划
 
 ## 里程碑
 
 - 当前：横屏全域沙盘、三项军议（真实战斗结算：兵力×统率×克制×城防，可胜可败可夺城）、路线预演、城池/部队/计策/外交/情报完整页面、传令结算、动态战报与自动存档（v2：外交/将领忠诚/行军令全持久化）、全局视觉质感层、霞鹜文楷正式字体、氛围微动效、模态遮罩与刘海屏安全区避让
 - 系统全通：五大系统全部接入 UI——募兵六兵种、行军/调防/攻城（多回合到达结算）、五项外交行动（进贡/结盟/停战/和亲/威慑）、三项计策（谣言/离间/收买）+伏兵设险、城池设施建设（农田/商市/兵营/仓廪）、19 名群雄敌将与忠诚体系、历史事件链（瓦岗鼎盛/江都宫变/刘武周南下/虎牢关大捷…）、领土急报与结局结算画面
-- 后续：音效资源补全 → 立绘扩充 → 数值平衡与难度 → 商店签名发布
+- 平衡与音频：AI 远征军真实攻城（不再白拿城池）、军旅音效八件套接线、200 局蒙特卡洛校准（夺城/失城/结局分布）、结局四档全部可达（一统/贞观/偏安/覆亡）
+- 后续：正式立绘扩充 → 难度分级 → 商店签名发布

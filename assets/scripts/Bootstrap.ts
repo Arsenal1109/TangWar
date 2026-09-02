@@ -38,7 +38,6 @@ export class Bootstrap extends Component {
 
     onLoad(): void {
         try {
-            console.log('[Bootstrap] onLoad START');
             // 横屏以高度为基准适配：390 设计高在 16:9 到 2.4:1 设备上保持触控尺寸稳定，
             // 额外宽度交给全域战图自然延展。
             view.setDesignResolutionSize(844, 390, ResolutionPolicy.FIXED_HEIGHT);
@@ -57,7 +56,6 @@ export class Bootstrap extends Component {
 
             this.uiRoot = this.ensureUiCanvas();
             this.buildUi();
-            console.log('[Bootstrap] buildUi done');
         } catch (e) {
             console.error('[Bootstrap] onLoad FAILED:', e);
             // 设备上看不到控制台，直接把异常画到屏幕上
@@ -179,11 +177,9 @@ export class Bootstrap extends Component {
                 this.bus.emit('world-events', { title: `${this.turns.year} ${this.turns.getSeason()} 天下大事`, messages: out.log });
             }
             if (out.victory) {
-                console.log(`[结局] ${out.victory.grade}：${out.victory.message}`);
                 this.bus.emit('game-ended', { grade: out.victory.grade, message: out.victory.message });
             }
             resetTurnFlags(this.cityStates);
-            console.log(`[回合] ${p.year} ${p.season} 第 ${p.turn} 回合`);
             this.saveMgr.save(this.world);
         });
     }

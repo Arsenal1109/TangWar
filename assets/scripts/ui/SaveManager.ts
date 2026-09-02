@@ -12,7 +12,7 @@ export class SaveManager extends Component {
     save(world: WorldState): void {
         const text = JSON.stringify(serializeSave(world));
         sys.localStorage.setItem(SAVE_KEY, text);
-        console.log('[存档] 已保存');
+
     }
 
     hasSave(): boolean {
@@ -26,7 +26,6 @@ export class SaveManager extends Component {
         }
         try {
             applySave(world, JSON.parse(text));
-            console.log('[读档] 已恢复');
             return true;
         } catch (e) {
             console.error('[读档] 失败', e);
