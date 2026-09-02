@@ -23,7 +23,7 @@ interface SimResult {
     finalYear: number;
 }
 
-function playGame(seed: number, difficulty: DifficultyId = 'normal'): SimResult {
+export function playGame(seed: number, difficulty: DifficultyId = "normal"): SimResult {
     let s = seed;
     const rng = (): number => {
         // mulberry32
