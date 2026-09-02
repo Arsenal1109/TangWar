@@ -32,7 +32,11 @@ export const GENERALS: GeneralDef[] = [
     { id: 'gaokaidao', name: '高开道', title: '燕王 · 渔阳', faction: 'yan', loyalty: 72, stats: { command: 70, politics: 20, strategy: 40, valor: 82, prestige: 55 } },
     { id: 'dufuwei', name: '杜伏威', title: '吴王 · 江淮', faction: 'wu', loyalty: 80, stats: { command: 80, politics: 55, strategy: 65, valor: 85, prestige: 70 } },
     { id: 'shenfaxing', name: '沈法兴', title: '梁王 · 江南', faction: 'shen', loyalty: 70, stats: { command: 55, politics: 50, strategy: 45, valor: 50, prestige: 52 } },
-    { id: 'linshihong', name: '林士弘', title: '楚帝 · 鄱阳', faction: 'lin', loyalty: 74, stats: { command: 58, politics: 45, strategy: 50, valor: 55, prestige: 54 } }
+    { id: 'linshihong', name: '林士弘', title: '楚帝 · 鄱阳', faction: 'lin', loyalty: 74, stats: { command: 58, politics: 45, strategy: 50, valor: 55, prestige: 54 } },
+    { id: 'weizheng', name: '魏征', title: '在野 · 谏议之士', faction: 'none', loyalty: 1, stats: { command: 40, politics: 92, strategy: 86, valor: 30, prestige: 70 } },
+    { id: 'duruhui', name: '杜如晦', title: '在野 · 王佐之才', faction: 'none', loyalty: 1, stats: { command: 45, politics: 95, strategy: 92, valor: 25, prestige: 74 } },
+    { id: 'houjunji', name: '侯君集', title: '在野 · 骁锐之将', faction: 'none', loyalty: 1, stats: { command: 84, politics: 30, strategy: 58, valor: 90, prestige: 64 } },
+    { id: 'sudingfang', name: '苏定方', title: '在野 · 河北骁将', faction: 'none', loyalty: 1, stats: { command: 88, politics: 25, strategy: 62, valor: 95, prestige: 66 } }
 ];
 
 /** 各势力开局的都城/驻地将领（敌将自动到任，唐将留给玩家任命）。 */

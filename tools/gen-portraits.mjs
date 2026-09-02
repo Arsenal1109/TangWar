@@ -119,7 +119,8 @@ const FACTION_COLORS = {
   yan: '#6b6b3d',
   wu: '#4f3d6b',
   shen: '#6b4a3d',
-  lin: '#4a3d6b'
+  lin: '#4a3d6b',
+  none: '#8a7a5a'
 };
 
 // 原型决定冠盔与轮廓：ruler 君主冕旒、strategist 谋士纶巾、general 战将兜鍪、empress 凤冠

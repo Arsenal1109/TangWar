@@ -36,14 +36,23 @@ export function marchTurns(from: CityDef, to: CityDef, speed: number): number {
     return Math.max(1, Math.ceil(dist / (40 * speed)));
 }
 
-export function createMarch(id: string, from: CityDef, to: CityDef, troops: Record<TroopType, number>): MarchOrder {
+/** 冬季（seasonIndex 3）雪原行军迟缓：路程折算 +1 回合。 */
+export function winterMarchTurns(from: CityDef, to: CityDef, speed: number, seasonIndex: number): number {
+    const base = marchTurns(from, to, speed);
+    return seasonIndex === 3 ? base + 1 : base;
+}
+
+export function createMarch(id: string, from: CityDef, to: CityDef, troops: Record<TroopType, number>, seasonIndex = -1): MarchOrder {
     const speed = dominantSpeed(troops);
+    const turnsLeft = seasonIndex === 3
+        ? winterMarchTurns(from, to, speed, seasonIndex)
+        : marchTurns(from, to, speed);
     return {
         id,
         fromId: from.id,
         toId: to.id,
         troops,
-        turnsLeft: marchTurns(from, to, speed),
+        turnsLeft,
         speed
     };
 }

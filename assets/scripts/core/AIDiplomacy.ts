@@ -107,8 +107,11 @@ export function updateAiDiplomacy(world: WorldState, rng: () => number): EnvoyOf
     const totalPower = world.cities.reduce((s, c) => s + c.army, 0);
     const dom = dominantFaction(world);
     if (!world.pacts.coalition && dom && totalPower > 0 && dom.power >= totalPower * COALITION_SHARE) {
+        // 盟约的实value：唐之盟邦绝不加入讨唐合纵
+        const exclude = dom.id === 'tang' ? new Set(world.diplomacy.allies) : new Set<string>();
         const others = activeAiFactions(world)
             .filter((f) => f !== dom.id)
+            .filter((f) => !exclude.has(f))
             .map((f) => ({ id: f, power: factionPower(world, f) }))
             .sort((a, b) => a.power - b.power);
         if (others.length >= 2) {

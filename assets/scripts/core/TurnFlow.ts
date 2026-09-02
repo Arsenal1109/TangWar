@@ -6,6 +6,8 @@ import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
 import { tickWorldMarches } from './MarchSystem';
 import { tickPacts, updateAiDiplomacy, applyAiSchemes, type EnvoyOffer } from './AIDiplomacy';
+import { rollRandomEvent } from './RandomEvents';
+import { resolveLoyaltyTurnover, announceTalents } from './TalentSystem';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
 
@@ -17,6 +19,25 @@ export interface TurnOutcome {
     alerts: string[];
     /** 群雄遣使要约（求和/勒索），需玩家抉择；无则 null */
     envoy: EnvoyOffer | null;
+}
+
+/** 盟邦岁贡：每年正月，每个盟邦向唐输财 120 金（入最富唐城）并深化邦交。 */
+export function collectAllyTribute(world: WorldState): string[] {
+    const lines: string[] = [];
+    for (const allyId of world.diplomacy.allies) {
+        // 盟邦须仍立于世
+        if (!world.cities.some((c) => c.faction === allyId)) {
+            continue;
+        }
+        const tang = world.cities.filter((c) => c.faction === 'tang').sort((a, b) => b.gold - a.gold)[0];
+        if (!tang) {
+            continue;
+        }
+        tang.gold += 120;
+        world.diplomacy.relations[allyId] = Math.max(-100, Math.min(100, (world.diplomacy.relations[allyId] ?? 0) + 2));
+        lines.push(`${getFaction(allyId).name}遣使岁贡，输金 120 入${tang.name}府库`);
+    }
+    return lines;
 }
 
 // 单回合装配：停战计时 → 行军到达 → AI → 资源结算 → 历史事件 → 外交推演 → 胜负判定
@@ -62,6 +83,23 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
 
     const ev = checkHistoricalEvents(world);
 
+    // 灾异丰稔：天下各有气象（12%/季，首两回合不出）
+    rollRandomEvent(world, rand);
+
+    // 岁首（正月）：盟邦岁贡 + 求贤令
+    if (world.seasonIndex === 0 && world.turn > 0) {
+        const tribute = collectAllyTribute(world);
+        for (const t of tribute) {
+            world.log.push(t);
+        }
+        announceTalents(world);
+    }
+
+    // 岁末（冬末）：忠诚结算——敌将离心可弃暗投明，唐将怀怨亦会叛逃
+    if (world.seasonIndex === 3) {
+        resolveLoyaltyTurnover(world, rand);
+    }
+
     // 虎狼暗计（离间/谣言）→ 群雄外交推演：合纵结盟写日志，遣使要约交玩家抉择
     const schemes = applyAiSchemes(world, rand);
     const envoy = updateAiDiplomacy(world, rand);
@@ -70,7 +108,7 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
         recordChronicle(world, `史事 · ${name}`);
     }
     for (const line of world.log) {
-        if (line.includes('歃血为盟')) {
+        if (line.includes('歃血为盟') || line.includes('弃暗投明') || line.includes('仗策归唐')) {
             recordChronicle(world, line);
         }
     }

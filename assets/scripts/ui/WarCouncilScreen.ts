@@ -38,6 +38,7 @@ import { TurnManager } from '../core/TurnManager';
 import { createWorld } from '../core/WorldState';
 import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
 import { SCENARIOS } from '../core/Scenarios';
+import { talentOffer, recruitTalent } from '../core/TalentSystem';
 import { AUTO_SLOT } from '../core/SaveSlots';
 import type { SaveManager } from './SaveManager';
 import { FACTIONS, getFaction } from '../data/Factions';
@@ -1163,7 +1164,7 @@ export class WarCouncilScreen extends Component {
             from.troops[t] = 0;
         }
         from.army = 0;
-        const order = createMarch(`march-${this.world.turn}-${from.id}-${to.id}`, getCity(from.id), getCity(to.id), troops);
+        const order = createMarch(`march-${this.world.turn}-${from.id}-${to.id}`, getCity(from.id), getCity(to.id), troops, this.turns.seasonIndex);
         order.command = commandOf(from, this.world.generals);
         order.faction = from.faction;
         this.world.marches.push(order);
@@ -1379,6 +1380,20 @@ export class WarCouncilScreen extends Component {
         this.label(detail, selected.name, 19, C.paper, 0, 52, 180, 26, true);
         this.label(detail, selected.title, 10, C.gold, 0, 30, 190, 18, false);
         this.label(detail, getFaction(selected.faction).name, 11, C.muted, 0, 10, 180, 18, false);
+        // 在野豪杰：图鉴页直接延请（求贤令指引至此）
+        const offer = talentOffer(this.world, selected.id);
+        if (offer.available) {
+            this.label(detail, '贤才在野，延之则仕', 11, C.gold, 0, -12, 180, 18, true);
+            this.button(detail, 'RosterRecruit', `延请（${offer.cost}金）`, 0, -34, 150, 28, () => {
+                const result = recruitTalent(this.world, selected.id);
+                this.showToast(result.ok ? `${selected.name}已仗策归唐` : result.message, result.ok ? 'good' : 'bad');
+                if (result.ok) {
+                    this.bus.emit('sfx', { name: 'diplomacy' });
+                }
+                this.renderPageAgain('roster');
+            });
+            return;
+        }
         const statDefs: Array<{ key: keyof typeof selected.stats; label: string }> = [
             { key: 'command', label: '统军' },
             { key: 'politics', label: '政务' },

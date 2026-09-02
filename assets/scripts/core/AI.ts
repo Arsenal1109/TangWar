@@ -106,9 +106,9 @@ export function decideFactions(world: WorldState, rng?: () => number): AiAction[
             continue;
         }
         const charm = EXPAND_CHANCE[def.personality] * difficultyOf(world.difficulty).aiAggression;
-        // 与唐停战者不攻唐土：本势力在停战中 → 唐土受保护（其余目标照常）
+        // 与唐停战者不攻唐土；唐之盟邦亦不侵唐土（盟约的实value：安稳的侧翼）
         const protectedFactions = new Set<string>();
-        if (isTrucedWithTang(world, f)) {
+        if (isTrucedWithTang(world, f) || world.diplomacy.allies.includes(f)) {
             protectedFactions.add('tang');
         }
         // 合纵成员优先攻打盟主之城；无接壤盟主城再退回常规选目标
