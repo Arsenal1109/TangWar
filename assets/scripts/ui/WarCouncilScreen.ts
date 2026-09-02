@@ -32,6 +32,8 @@ import { applyPolicy } from '../core/PolicySystem';
 import { buildFacility, facilityCost, facilityName, FACILITY_MAX, type FacilityType } from '../core/FacilitySystem';
 import { sowDiscord, bribeGeneral, spreadRumor, persuadeSurrender, burnGranary, PERSUADE_COST, BURN_COST, PERSUADE_MORALE } from '../core/Stratagem';
 import { canProclaim, proclaimEmperor, ERAS, type EraId } from '../core/ImperialSystem';
+import { appointDuyun, removeDuyun, duyunOf, duyunsOf, DUYUN_MAX } from '../core/GovernorSystem';
+import { buildEpilogue } from '../core/Epilogue';
 import type { GeneralState } from '../core/GeneralSystem';
 import type { CityState } from '../core/ResourceSystem';
 import type { WorldState } from '../core/WorldState';
@@ -1011,6 +1013,9 @@ export class WarCouncilScreen extends Component {
             if (spName !== '—') {
                 this.label(row, spName, 9, C.gold, 4, -11, 40, 14, true, HorizontalTextAlignment.LEFT);
             }
+            if (duyunOf(this.world, city.id)) {
+                this.label(row, '都', 9, C.cinnabarHot, -8, 0, 16, 14, true);
+            }
             this.label(row, `兵${this.compact(city.army)}  民${city.morale}`, 10, selected ? C.gold : C.muted, 25, 0, 78, 19);
             this.affordance(row, 72, 0, 0.85);
             row.on(Node.EventType.TOUCH_END, () => {
@@ -1501,6 +1506,22 @@ export class WarCouncilScreen extends Component {
         });
         this.label(detail, `忠诚 ${loyalty}${loyalty < 50 ? '（心怀异志）' : ''}`, 12, loyalty < 50 ? C.red : C.green, 0, selected.trait ? -166 : -152, 180, 18, true);
         this.label(detail, station ? `驻守 · ${station.name}` : '游历 · 未授职', 11, station ? C.paper : C.muted, 0, selected.trait ? -184 : -172, 180, 18, false);
+        // 都督任免：驻守唐城的将领可拜都督（每季自决出讨），已拜者可罢免
+        if (selected.faction === 'tang' && station) {
+            const isDuyun = duyunOf(this.world, station.id) === selected.id;
+            const btnY = selected.trait ? -206 : -194;
+            const btn = this.button(detail, 'DuyunToggle', isDuyun ? '罢都督' : '拜都督', 0, btnY, 96, 24, () => {
+                const result = isDuyun ? removeDuyun(this.world, station.id) : appointDuyun(this.world, station.id, selected.id);
+                this.bus.emit('sfx', { name: 'select' });
+                this.showToast(result.ok ? result.message : result.reason, result.ok ? 'good' : 'bad');
+                if (result.ok) {
+                    this.renderPageAgain('roster');
+                }
+            });
+            this.pressable(btn);
+            const count = Object.keys(duyunsOf(this.world)).length;
+            this.label(detail, `都督府 ${count}/${DUYUN_MAX} · 胜算六成自决出讨`, 9, C.bronze, 0, btnY - 18, 220, 15, false);
+        }
     }
 
     /** 功业页体：成就徽格（5 列 × 4 行），达成者金框点亮。 */
@@ -2092,16 +2113,26 @@ export class WarCouncilScreen extends Component {
         this.label(layer, `${this.turns.year} ${this.turns.getSeason()} · 唐土${stats.length}城 · 兵${this.tangPower().toLocaleString()}`, 12, C.muted, 0, -60, 520, 20, true);
         this.label(layer, '本局战报已录入史册 · 存档将定格于此局', 10, C.bronze, 0, -78, 460, 18, true);
 
+        // —— 结局铭文：按结局等次、年号、功业生成史册收束之笔 ——
+        const epi = buildEpilogue(this.world, grade);
+        const epiPanel = this.panel(layer, 'EndingEpilogue', 560, epi.paragraphs.length > 3 ? 116 : 96, new Color(18, 16, 13, 236), 0, -128, T.radius.card, C.gold, false);
+        this.rect(epiPanel, 'EpilogueAccent', 4, 66, C.gold, -274, 0, 2);
+        this.label(epiPanel, '铭曰', 12, C.gold, -252, 30, 60, 18, true, HorizontalTextAlignment.LEFT);
+        epi.paragraphs.slice(0, 4).forEach((line, i) => {
+            this.label(epiPanel, line, 10, i === 0 ? C.paper : C.muted, 12, 12 - i * 15, 520, 16, false, HorizontalTextAlignment.LEFT);
+        });
+        this.label(epiPanel, epi.verdict, 12, C.gold, 236, -epi.paragraphs.length * 14 + 14, 90, 18, true, HorizontalTextAlignment.RIGHT);
+
         // —— 史册卷轴：本局大事纪（最近 6 条，逆序）——
         const chronicle = this.world.chronicle.slice(-6).reverse();
         if (chronicle.length > 0) {
-            const scroll = this.panel(layer, 'EndingChronicle', 560, 88, new Color(18, 16, 13, 242), 0, -138, T.radius.card, C.bronzeSoft, false);
+            const scroll = this.panel(layer, 'EndingChronicle', 560, 88, new Color(18, 16, 13, 242), 0, -238, T.radius.card, C.bronzeSoft, false);
             this.rect(scroll, 'ChronicleAccent', 4, 66, C.gold, -274, 0, 2);
             this.label(scroll, '史册·大事', 12, C.gold, -252, 32, 120, 18, true, HorizontalTextAlignment.LEFT);
             chronicle.forEach((line, i) => {
                 this.label(scroll, line, 10, i === 0 ? C.paper : C.muted, 12, 14 - i * 14, 520, 16, false, HorizontalTextAlignment.LEFT);
             });
-            this.label(layer, `共 ${this.world.chronicle.length} 条`, 9, C.bronze, 250, -138, 80, 14, false);
+            this.label(layer, `共 ${this.world.chronicle.length} 条`, 9, C.bronze, 250, -238, 80, 14, false);
         }
 
         this.button(layer, 'EndingRestart', '重开新局', -92, -112, 150, 34, () => {

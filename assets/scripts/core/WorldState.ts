@@ -28,6 +28,8 @@ export interface WorldState {
     achievements: string[];
     /** 称帝建元后的年号（未称帝为 null）；存档 v2 起持久化 */
     eraName?: string | null;
+    /** 都督府：城 id → 都督将领 id；存档 v2 起持久化 */
+    duyuns?: Record<string, string>;
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }

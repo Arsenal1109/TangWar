@@ -4,6 +4,7 @@ import { resolveTurn } from './ResourceSystem';
 import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
+import { runDuyunCampaigns } from './GovernorSystem';
 import { tickWorldMarches } from './MarchSystem';
 import { tickPacts, updateAiDiplomacy, applyAiSchemes, type EnvoyOffer } from './AIDiplomacy';
 import { rollRandomEvent } from './RandomEvents';
@@ -117,6 +118,12 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
         if (line.includes('歃血为盟') || line.includes('弃暗投明') || line.includes('仗策归唐')) {
             recordChronicle(world, line);
         }
+    }
+
+    // 都督府：方面之任自决出讨（胜算六成即动，不占军议）
+    const duyunLines = runDuyunCampaigns(world, rand);
+    for (const line of duyunLines) {
+        world.log.push(line);
     }
 
     // 绝地标记：唐土一度仅剩两城以下

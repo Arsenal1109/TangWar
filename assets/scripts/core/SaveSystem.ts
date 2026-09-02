@@ -62,6 +62,8 @@ export interface SaveData {
     achievements?: string[];
     /** 称帝年号（未称帝为 null / 旧档缺省） */
     eraName?: string | null;
+    /** 都督府：城 id → 都督 id（旧档缺省空） */
+    duyuns?: Record<string, string>;
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -110,7 +112,8 @@ export function serializeSave(world: WorldState): SaveData {
         },
         chronicle: [...world.chronicle],
         achievements: [...world.achievements],
-        eraName: world.eraName ?? null
+        eraName: world.eraName ?? null,
+        duyuns: { ...(world.duyuns ?? {}) }
     };
 }
 
@@ -200,5 +203,6 @@ export function applySave(world: WorldState, data: SaveData): void {
     world.chronicle = Array.isArray(data.chronicle) ? data.chronicle.filter((l) => typeof l === 'string') : [];
     world.achievements = Array.isArray(data.achievements) ? data.achievements.filter((l) => typeof l === 'string') : [];
     world.eraName = typeof data.eraName === 'string' && data.eraName.length > 0 ? data.eraName : null;
+    world.duyuns = data.duyuns && typeof data.duyuns === 'object' ? { ...data.duyuns } : {};
     world.log = [];
 }
