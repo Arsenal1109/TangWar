@@ -18,7 +18,7 @@ import type { CityState } from './core/ResourceSystem';
 const { ccclass } = _decorator;
 
 // 全局事件类型
-export interface GameEvents {
+export type GameEvents = {
     'turn-advanced': { year: number; season: string; turn: number };
     'city-selected': { cityId: string };
     'world-events': { title: string; messages: string[] };
@@ -38,7 +38,7 @@ export interface GameEvents {
     'achievement': { name: string; desc: string };
     /** 新局剧本选定（难度弹窗之后；对既有世界做归属/年代改写） */
     'scenario-chosen': { id: string };
-}
+};
 
 @ccclass('Bootstrap')
 export class Bootstrap extends Component {

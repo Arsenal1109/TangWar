@@ -39,8 +39,8 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyDef> = {
         id: 'hard',
         name: '虎狼',
         desc: '群雄四面张网，粮金滚滚——名将亦需步步为营',
-        aiAggression: 1.6,
-        aiStipend: 70,
+        aiAggression: 1.9,
+        aiStipend: 100,
         playerStart: 0.75
     }
 };

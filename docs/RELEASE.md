@@ -40,12 +40,12 @@
 ## 验收清单（全绿）
 
 - [x] 32 文件 242 测试通过（`cd tests && npx vitest run`）
-- [x] typecheck 无新增错误（`bash tools/typecheck.sh`，基线 5 条为引擎声明噪声）
+- [x] typecheck 零错误（`bash tools/typecheck.sh`，M10.1 修复既有 5 条并扩大检查范围）
 - [x] 字体子集覆盖 1875+ 字（`bash tools/subset-font.sh` → `tools/check-font-coverage.py`）
-- [x] 三难度 200 局蒙特卡洛单调：easy 20.0 / normal 8.9 / hard 5.8（800 局校验）
+- [x] 三难度 800 局蒙特卡洛单调：easy 70.3 / normal 40.0 / hard 21.8（M10.1 募兵机器人仪器；虎狼参数补贴 70→100、进取 1.6→1.9 随仪器重校）
 - [x] soak 120 局 × 至多 120 回合：零不变量违例（负资源/越界/阵营/守将悬空/成就重复）
 - [x] 存档连续性：任意回合读档后同随机流续演与不中断**逐位一致**
-- [x] 征服线成就自然解锁验证（first-victory 118/120 局、full-treasury 120/120、granary 16/120）
+- [x] 征服线成就自然解锁验证（first-victory 120/120 局、veteran-army 63/120、granary 104/120、名将如云偶现）
 - [x] 音效 8 wav 与全部 sfx 事件 1:1 对齐；BGM 随设置开关
 - [x] 旧档兼容：v1（无将领运行态）与 v2.2 前旧档（无 marriedAllies/duyuns/eraName）均可回放
 
@@ -57,6 +57,7 @@
 
 ## 已知边界（非缺陷）
 
-- sim 机器人不募兵/外交，故 veteran-army（10 胜）在纯征服模拟中不出现；人类玩法无碍
+- sim 机器人会募兵但不施计策/外交/劝降，成就解锁率以此仪器度量；人类玩法上限更高
 - 「再观天下」为结局后自由巡视，无额外目标
 - 200 局级蒙特卡洛存在 ±2% 掷点流噪声（参数微调会重排共享 rng），单调性以 800 局为准
+- typecheck 基线已清零（M10.1），检查范围扩至 ui + core + data 全量，任何新错误即失败

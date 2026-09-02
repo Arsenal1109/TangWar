@@ -11,6 +11,7 @@ import { createDiplomacyState } from '../assets/scripts/core/Diplomacy';
 import { applyDifficultyStart, type DifficultyId } from '../assets/scripts/core/Difficulty';
 import { runWorldTurn } from '../assets/scripts/core/TurnFlow';
 import { executeCouncilOrder, raidOdds } from '../assets/scripts/core/CommandSystem';
+import { recruit } from '../assets/scripts/core/Military';
 import { checkVictory } from '../assets/scripts/core/Victory';
 
 interface SimResult {
@@ -40,6 +41,11 @@ export function playGame(seed: number, difficulty: DifficultyId = "normal"): Sim
     let owned = new Set(world.cities.filter((c) => c.faction === 'tang').map((c) => c.id));
     for (let turn = 0; turn < 120; turn++) {
         // 简单策略：胜算≥55% 就突袭，士气低就安抚，否则防御；粮草不足降级为防御
+        // 募兵：金富粮足时补充府兵（人类玩家的基础操作，令模拟更接近真实胜场曲线）
+        const home = world.cities.find((c) => c.id === 'taiyuan')!;
+        if (home.gold > 1200 && home.troops.fubing < 8000) {
+            recruit(home, 'fubing', 2);
+        }
         const odds = raidOdds(world, 'taiyuan');
         const key = odds >= 55 ? 'raid' : (world.cities.find((c) => c.id === 'taiyuan')!.morale < 60 ? 'pacify' : 'defend');
         const out = executeCouncilOrder(world, key as 'raid' | 'pacify' | 'defend', 'taiyuan', rng);

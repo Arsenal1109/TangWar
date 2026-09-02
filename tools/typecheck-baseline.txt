@@ -1,5 +1,0 @@
-assets/scripts/Bootstrap.ts(L,C): error TS2344: Type 'GameEvents' does not satisfy the constraint 'Record<string, unknown>'.
-assets/scripts/ui/SoundManager.ts(L,C): error TS2344: Type 'GameEvents' does not satisfy the constraint 'Record<string, unknown>'.
-assets/scripts/ui/WarCouncilScreen.ts(L,C): error TS2344: Type 'GameEvents' does not satisfy the constraint 'Record<string, unknown>'.
-assets/scripts/ui/WarCouncilScreen.ts(L,C): error TS2731: Implicit conversion of a 'symbol' to a 'string' will fail at runtime. Consider wrapping this expression in 'String(...)'.
-  Index signature for type 'string' is missing in type 'GameEvents'.

@@ -63,15 +63,15 @@ describe('Difficulty 难度分级', () => {
         expect(expansionCount('hard')).toBeGreaterThan(expansionCount('easy'));
     });
 
-    it('难度补贴：虎狼每季群雄城池入账 70 粮金，唐城不入账', () => {
+    it('难度补贴：虎狼每季群雄城池入账 100 粮金，唐城不入账', () => {
         const w = createWorld(617, createCityStates(), [], undefined, [], 'hard');
         const taiyuan = w.cities.find((c) => c.id === 'taiyuan')!;
         const mayi = w.cities.find((c) => c.id === 'mayi')!;
         const tangGold = taiyuan.gold;
         const enemyGold = mayi.gold;
         runWorldTurn(w, () => 0.95);
-        // 马邑（tier-0，人口 8 万）：常规税 32 + 虎狼补贴 70 = +102
-        expect(mayi.gold).toBe(enemyGold + 32 + 70);
+        // 马邑（tier-0，人口 8 万）：常规税 32 + 虎狼补贴 100 = +132
+        expect(mayi.gold).toBe(enemyGold + 32 + 100);
         // 唐城（太原，人口 15 万）：只有常规税 60，不吃补贴
         expect(taiyuan.gold).toBe(tangGold + 60);
     });

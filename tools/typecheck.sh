@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 无编辑器环境下的 UI 类型检查：用最小 'cc' 桩 + tests 自带 typescript。
-# 项目存在若干既有错误（EventBus 泛型约束、settings key symbol 转换），
-# 本脚本以「相对基线无新增错误」为通过标准：归一化后的错误集合与基线一致即 OK。
+# 项目此前存在基线错误（EventBus 泛型约束、settings key symbol 转换），已于 M10 全部修复。
+# 本脚本以「相对基线无新增错误」为通过标准：归一化后的错误集合与基线一致即 OK（当前基线为空 = 零容忍）。
 #
 # 更新基线：candidate 修正后手动执行
 #   tsc ... | 归一化（去 行:列 并 sort） > tools/typecheck-baseline.txt
@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 
 TSC="tests/node_modules/.bin/tsc"
 [ -x "$TSC" ] || { echo "缺少 tests/node_modules（先 cd tests && npm install）"; exit 1; }
-FILES="temp/ui-check/cc-stub.d.ts assets/scripts/ui/WarCouncilScreen.ts assets/scripts/ui/SoundManager.ts assets/scripts/Bootstrap.ts"
+FILES="temp/ui-check/cc-stub.d.ts assets/scripts/ui/*.ts assets/scripts/Bootstrap.ts assets/scripts/core/*.ts assets/scripts/data/*.ts"
 
 mkdir -p temp/ui-check
 cat > temp/ui-check/cc-stub.d.ts << 'EOF'

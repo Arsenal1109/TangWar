@@ -1644,7 +1644,7 @@ export class WarCouncilScreen extends Component {
         const bodyW = parent.getComponent(UITransform)!.contentSize.width;
         const cardW = Math.min(330, Math.max(250, (bodyW - 46) / 2));
         const cardX = (cardW + 12) / 2;
-        const rows: Array<{ key: keyof typeof this.settings; title: string; desc: string }> = [
+        const rows: Array<{ key: 'music' | 'vibration' | 'fastText'; title: string; desc: string }> = [
             { key: 'music', title: '军帐音乐', desc: '开启环境音乐与战鼓提示' },
             { key: 'vibration', title: '传令震动', desc: '长按完成时提供触觉反馈' },
             { key: 'fastText', title: '快速战报', desc: '跳过逐字展开动画' }

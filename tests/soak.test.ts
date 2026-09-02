@@ -6,6 +6,7 @@ import { createDiplomacyState } from '../assets/scripts/core/Diplomacy';
 import { applyDifficultyStart, type DifficultyId } from '../assets/scripts/core/Difficulty';
 import { runWorldTurn } from '../assets/scripts/core/TurnFlow';
 import { executeCouncilOrder, raidOdds } from '../assets/scripts/core/CommandSystem';
+import { recruit } from '../assets/scripts/core/Military';
 import { checkVictory } from '../assets/scripts/core/Victory';
 import { FACTIONS } from '../assets/scripts/data/Factions';
 import { ACHIEVEMENTS } from '../assets/scripts/core/Achievements';
@@ -40,6 +41,11 @@ function soakGame(seed: number, difficulty: DifficultyId, errors: string[], achG
     let grade = 'timeout';
     let turn = 0;
     for (; turn < 120; turn++) {
+        // 募兵：金富粮足时补充府兵（人类玩家的基础操作，令模拟更接近真实胜场曲线）
+        const home = world.cities.find((c) => c.id === 'taiyuan')!;
+        if (home.gold > 1200 && home.troops.fubing < 8000) {
+            recruit(home, 'fubing', 2);
+        }
         const odds = raidOdds(world, 'taiyuan');
         const key = odds >= 55 ? 'raid' : (world.cities.find((c) => c.id === 'taiyuan')!.morale < 60 ? 'pacify' : 'defend');
         executeCouncilOrder(world, key as 'raid' | 'pacify' | 'defend', 'taiyuan', rng);
@@ -116,11 +122,9 @@ describe('发行 soak（批量推演 + 不变量巡检）', () => {
         // 模拟覆盖：120 局 × 至多 120 回合
         expect(games).toBe(120);
         expect(turns).toBeGreaterThan(3000);
-        // 征服/经济线成就必须在批量推演中自然出现过。
-        // 注：veteran-army（10 胜）不在此列——sim 机器人从不募兵，兵力递减后
-        // 胜算跌破 55% 即不再出讨，整局胜场封顶 7~9；人类玩家有募兵/多路出讨/
-        // 都督府/伏兵，一局正常推进（统一需约 20 场胜仗）远超 10 胜，校准无需调整。
-        const mustFire = ['first-victory', 'city-taker', 'gold-hoard', 'full-treasury', 'granary', 'blitz'];
+        // 征服/经济线成就必须在批量推演中自然出现过（M10.1 起机器人会募兵，
+        // veteran-army 亦纳入必达清单；名将如云需 16 将，120 局仅偶现不作断言）。
+        const mustFire = ['first-victory', 'city-taker', 'veteran-army', 'gold-hoard', 'full-treasury', 'granary', 'blitz'];
         const fired = mustFire.filter((id) => (achGames[id] ?? 0) > 0);
         expect(fired, `征服线成就未自然达成：${mustFire.filter((id) => !fired.includes(id)).join('、')}`).toEqual(mustFire);
         // 汇总输出（供调参参考）
