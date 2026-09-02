@@ -39,7 +39,7 @@ import { createWorld } from '../core/WorldState';
 import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
 import { AUTO_SLOT } from '../core/SaveSlots';
 import type { SaveManager } from './SaveManager';
-import { FACTIONS } from '../data/Factions';
+import { FACTIONS, getFaction } from '../data/Factions';
 import { GENERALS } from '../data/Generals';
 import { POLICIES } from '../data/Policies';
 import { TROOP_ORDER, TROOPS, type TroopType } from '../data/Troops';
@@ -48,7 +48,7 @@ import { neighborsOf, getCity } from '../data/Cities';
 const { ccclass } = _decorator;
 
 type CouncilKey = 'defend' | 'raid' | 'pacify';
-type PageKey = 'world' | 'cities' | 'army' | 'strategy' | 'diplomacy' | 'intel' | 'settings';
+type PageKey = 'world' | 'cities' | 'army' | 'strategy' | 'diplomacy' | 'intel' | 'roster' | 'settings';
 
 interface CouncilOption {
     key: CouncilKey;
@@ -191,6 +191,8 @@ export class WarCouncilScreen extends Component {
     private eraLabel!: Label;
     private difficultyLabel!: Label;
     private saveMgr: SaveManager | null = null;
+    /** 图鉴页当前点选的武将 id */
+    private rosterSelected: string | null = null;
     private headerNode!: Node;
     private resNumbers: Record<'food' | 'gold' | 'army' | 'morale', Label> = {} as Record<'food' | 'gold' | 'army' | 'morale', Label>;
     private toastLabel!: Label;
@@ -790,7 +792,7 @@ export class WarCouncilScreen extends Component {
 
     private buildBottomNav(): void {
         const navW = 42;
-        const navH = 168;
+        const navH = 210;
         const navX = -this.width / 2 + Math.max(24, this.safeLeft + 24);
         const navY = (this.safeBottom - this.topBarHeight) / 2 + 5;
         const nav = this.panel(this.node, 'MapTools', navW, navH, new Color(17, 16, 14, 248), navX, navY, T.radius.control, C.bronzeSoft, false);
@@ -799,6 +801,7 @@ export class WarCouncilScreen extends Component {
             { key: 'world', label: '地形', icon: 'tool-terrain' },
             { key: 'diplomacy', label: '势力', icon: 'tool-power' },
             { key: 'cities', label: '城池', icon: 'tool-city' },
+            { key: 'roster', label: '图鉴', icon: 'tool-roster' },
             { key: 'intel', label: '标记', icon: 'tool-mark' }
         ];
         const itemH = navH / tools.length;
@@ -1301,6 +1304,68 @@ export class WarCouncilScreen extends Component {
         this.label(source, '情报来源：太行斥候 · 河东郡府 · 幽州商旅', 10, C.gold, 0, 0, bodyW - 50, 18, true);
     }
 
+    /** 武将图鉴：左侧 8×4 半身像格，右侧详情卡（点选刷新）。 */
+    private renderRosterPage(): void {
+        const parent = this.pageHeader('武将图鉴', '三十一位乱世豪杰尽列于此；点选半身像查看五维与驻守。');
+        const selected = this.rosterSelected ? GENERALS.find((g) => g.id === this.rosterSelected) : null;
+        // —— 左：头像网格（8 列 × 4 行） ——
+        const cols = 8;
+        const cellW = 61;
+        const cellH = 74;
+        const gridX = -222;
+        const gridY = 118;
+        GENERALS.forEach((g, i) => {
+            const col = i % cols;
+            const rowIdx = Math.floor(i / cols);
+            const x = gridX + col * cellW;
+            const y = gridY - rowIdx * cellH;
+            const isSel = this.rosterSelected === g.id;
+            const chip = this.panel(parent, `Roster_${g.id}`, cellW - 6, cellH - 6, isSel ? new Color(58, 27, 23, 248) : C.panelSoft, x, y, T.radius.chip, isSel ? C.cinnabarHot : C.bronzeSoft);
+            this.image(chip, `RosterFace_${g.id}`, `redesign/portraits/${g.id}/texture`, 40, 40, 0, 8, 6);
+            this.label(chip, g.name, 11, isSel ? C.paper : C.gold, 0, -22, cellW - 10, 16, true);
+            chip.on(Node.EventType.TOUCH_END, () => {
+                this.rosterSelected = g.id;
+                this.bus.emit('sfx', { name: 'select' });
+                this.renderPageAgain('roster');
+            }, this);
+            this.pressable(chip);
+            this.entrance(chip, i % 8);
+        });
+        // —— 右：详情卡 ——
+        const detail = this.panel(parent, 'RosterDetail', 204, 300, new Color(22, 20, 17, 246), 190, -20, T.radius.card, selected ? C.gold : C.bronzeSoft, false);
+        this.rect(detail, 'RosterAccent', 4, 270, C.cinnabar, -96, 0, 2);
+        if (!selected) {
+            this.label(detail, '点选左侧\n半身像', 15, C.muted, 0, 0, 180, 60, true);
+            return;
+        }
+        const state = this.world.generals.find((gs) => gs.id === selected.id);
+        const loyalty = state ? state.loyalty : selected.loyalty;
+        const station = this.world.cities.find((c) => c.generalId === selected.id);
+        this.image(detail, 'RosterBig', `redesign/portraits/${selected.id}/texture`, 72, 72, 0, 108, 8);
+        this.label(detail, selected.name, 19, C.paper, 0, 52, 180, 26, true);
+        this.label(detail, selected.title, 10, C.gold, 0, 30, 190, 18, false);
+        this.label(detail, getFaction(selected.faction).name, 11, C.muted, 0, 10, 180, 18, false);
+        const statDefs: Array<{ key: keyof typeof selected.stats; label: string }> = [
+            { key: 'command', label: '统军' },
+            { key: 'politics', label: '政务' },
+            { key: 'strategy', label: '谋略' },
+            { key: 'valor', label: '勇武' },
+            { key: 'prestige', label: '威望' }
+        ];
+        statDefs.forEach((s, i) => {
+            const y = -18 - i * 26;
+            this.label(detail, s.label, 11, C.muted, -80, y, 44, 18, false, HorizontalTextAlignment.LEFT);
+            // 五维条：金底 + 数值
+            const barW = 88;
+            const v = Math.max(0, Math.min(100, selected.stats[s.key]));
+            this.rect(detail, `RosterBarBg_${s.key}`, barW, 7, new Color(40, 36, 30, 255), 8, y, 3);
+            this.rect(detail, `RosterBar_${s.key}`, Math.max(3, barW * v / 100), 7, v >= 90 ? C.cinnabarHot : C.gold, 8 - (barW - Math.max(3, barW * v / 100)) / 2, y, 3);
+            this.label(detail, String(v), 11, v >= 90 ? C.cinnabarHot : C.paper, 62, y, 30, 16, false);
+        });
+        this.label(detail, `忠诚 ${loyalty}${loyalty < 50 ? '（心怀异志）' : ''}`, 12, loyalty < 50 ? C.red : C.green, 0, -152, 180, 18, true);
+        this.label(detail, station ? `驻守 · ${station.name}` : '游历 · 未授职', 11, station ? C.paper : C.muted, 0, -172, 180, 18, false);
+    }
+
     private renderSettingsPage(): void {
         const parent = this.pageHeader('设置', '横屏显示与反馈偏好会保留在本次游戏中。');
         const bodyW = parent.getComponent(UITransform)!.contentSize.width;
@@ -1678,6 +1743,7 @@ export class WarCouncilScreen extends Component {
         if (key === 'strategy') this.renderStrategyPage();
         if (key === 'diplomacy') this.renderDiplomacyPage();
         if (key === 'intel') this.renderIntelPage();
+        if (key === 'roster') this.renderRosterPage();
         if (key === 'settings') this.renderSettingsPage();
     }
 
