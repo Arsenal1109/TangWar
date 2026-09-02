@@ -24,7 +24,7 @@ export interface CouncilOutcome {
 
 export const COUNCIL_COSTS: Record<CouncilKey, number> = {
     defend: 300,
-    raid: 600,
+    raid: 400,
     pacify: 400
 };
 
@@ -165,19 +165,22 @@ export function executeCouncilOrder(
     removeArmy(target, result.defenderLoss);
     let captured = false;
     let extra = '';
+    if (result.attackerWin) {
+        // 胜利即动摇守备：城防受损后再判定夺城（残城可下）
+        target.defense = Math.max(0, target.defense - 3);
+        target.morale = Math.max(0, target.morale - 10);
+    }
     if (result.attackerWin && (target.army <= CAPTURE_ARMY_THRESHOLD || target.defense <= CAPTURE_DEFENSE_MAX)) {
         // 破城：缴获三成府库，城池易主但残破
         const loot = Math.floor(target.gold * 0.3);
         target.faction = city.faction;
         target.gold -= loot;
-        target.morale = 50;
+        target.morale = 60;
         target.defense = 3;
         target.generalId = null;
         captured = true;
         extra = `缴获黄金 ${loot}，${target.name}已入版图。`;
     } else if (result.attackerWin) {
-        target.defense = Math.max(0, target.defense - 3);
-        target.morale = Math.max(0, target.morale - 10);
         extra = `${target.name}城防受损，守军士气受挫。`;
     } else {
         city.morale = Math.max(0, city.morale - 6);

@@ -4,6 +4,7 @@ import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
 import { tickWorldMarches } from './MarchSystem';
+import { getFaction } from '../data/Factions';
 
 export interface TurnOutcome {
     log: string[];
@@ -24,13 +25,15 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
             .map((a) => a.targetCityId!)
             .filter((id) => world.cities.some((c) => c.id === id && c.faction === 'tang'))
     );
-    applyAiActions(world, actions);
+    applyAiActions(world, actions, rng);
     const alerts: string[] = [];
     for (const id of tangTargets) {
         const city = world.cities.find((c) => c.id === id);
         if (city && city.faction !== 'tang') {
-            alerts.push(`急报：${city.name}失守，已被${city.faction === 'tang' ? '' : ''}敌军攻占！`);
-            world.log.push(alerts[alerts.length - 1]);
+            const captor = getFaction(city.faction).name;
+            const msg = `急报：${city.name}失守，已被${captor}攻占！`;
+            alerts.push(msg);
+            world.log.push(msg);
         }
     }
 
