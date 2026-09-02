@@ -183,6 +183,20 @@ export function executeCouncilOrder(
         // 胜利即动摇守备：城防受损后再判定夺城（残城可下）
         target.defense = Math.max(0, target.defense - 3);
         target.morale = Math.max(0, target.morale - 10);
+        // 守将下场：胜而不破亦有十二分之一阵斩之险（r < 0.12）
+        if (target.generalId && city.faction === 'tang') {
+            const r = rng();
+            if (r < 0.12) {
+                const g = world.generals.find((item) => item.id === target.generalId);
+                target.generalId = null;
+                if (g) {
+                    world.generals = world.generals.filter((item) => item.id !== g.id);
+                }
+                world.flags['kills'] = (Number(world.flags['kills']) || 0) + 1;
+                extra += g ? `${g.name}殁于阵前。` : '';
+                recordChronicle(world, `唐军阵斩敌将${g?.name ?? ''}于${target.name}城下`);
+            }
+        }
     }
     if (result.attackerWin && (target.army <= CAPTURE_ARMY_THRESHOLD || target.defense <= CAPTURE_DEFENSE_MAX)) {
         // 破城：缴获三成府库，城池易主但残破
@@ -191,7 +205,23 @@ export function executeCouncilOrder(
         target.gold -= loot;
         target.morale = 60;
         target.defense = 3;
-        target.generalId = null;
+        // 破城守将命运：六成被俘归唐（忠诚 40），四成遁走离场
+        if (target.generalId && city.faction === 'tang') {
+            const g = world.generals.find((item) => item.id === target.generalId);
+            if (g) {
+                if (rng() < 0.6) {
+                    g.faction = 'tang';
+                    g.loyalty = 40;
+                    extra += `${g.name}被俘归降。`;
+                    recordChronicle(world, `${g.name}兵败被俘，归降于唐`);
+                } else {
+                    world.generals = world.generals.filter((item) => item.id !== g.id);
+                    extra += `${g.name}遁走，不知所踪。`;
+                    recordChronicle(world, `${g.name}城破遁走，下落不明`);
+                }
+            }
+            target.generalId = null;
+        }
         captured = true;
         extra = `缴获黄金 ${loot}，${target.name}已入版图。`;
         world.flags['captures'] = (Number(world.flags['captures']) || 0) + 1;

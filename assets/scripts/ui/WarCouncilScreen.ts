@@ -30,7 +30,7 @@ import { canMarch, createMarch, tickWorldMarches } from '../core/MarchSystem';
 import { recruit } from '../core/Military';
 import { applyPolicy } from '../core/PolicySystem';
 import { buildFacility, facilityCost, facilityName, FACILITY_MAX, type FacilityType } from '../core/FacilitySystem';
-import { sowDiscord, bribeGeneral, spreadRumor } from '../core/Stratagem';
+import { sowDiscord, bribeGeneral, spreadRumor, persuadeSurrender, burnGranary, PERSUADE_COST, BURN_COST, PERSUADE_MORALE } from '../core/Stratagem';
 import type { GeneralState } from '../core/GeneralSystem';
 import type { CityState } from '../core/ResourceSystem';
 import type { WorldState } from '../core/WorldState';
@@ -1224,17 +1224,21 @@ export class WarCouncilScreen extends Component {
         const target = this.frontlineCity();
         const targetGeneral = this.targetGeneralForScheme();
         const ambushReady = this.world.flags['ambushReady'] === true;
+        const persuadeTarget = this.frontlineCity();
+        const persuadeReady = !!persuadeTarget && persuadeTarget.morale < PERSUADE_MORALE && persuadeTarget.faction !== 'tang';
         const plans = [
             { name: '散布谣言', desc: `扰乱${target ? target.name : '敌城'}民心 · 耗金40`, action: () => this.executeRumor() },
             { name: '离间敌将', desc: `离间${targetGeneral ? targetGeneral.name : '敌将'} · 耗金80`, action: () => this.executeScheme('discord') },
             { name: '重金收买', desc: `收买${targetGeneral ? targetGeneral.name : '敌将'} · 耗金400`, action: () => this.executeScheme('bribe') },
-            { name: ambushReady ? '伏兵已就位' : '伏兵设险', desc: ambushReady ? '下次突袭无视城防加成' : '提升下次突袭胜算 · 耗金260', action: () => this.executeAmbush() }
+            { name: ambushReady ? '伏兵已就位' : '伏兵设险', desc: ambushReady ? '下次突袭无视城防加成' : '提升下次突袭胜算 · 耗金260', action: () => this.executeAmbush() },
+            { name: '劝降', desc: persuadeTarget ? (persuadeReady ? `策反${persuadeTarget.name}（民心${persuadeTarget.morale}）· 耗金${PERSUADE_COST}` : `${persuadeTarget.name}民心未崩 · 耗金${PERSUADE_COST}`) : '需邻境敌城', action: () => this.executePersuade() },
+            { name: '劫粮焚仓', desc: `焚${target ? target.name : '敌城'}积仓 · 耗金${BURN_COST}`, action: () => this.executeBurn() }
         ];
         plans.forEach((plan, i) => {
-            const card = this.panel(parent, `Plan_${i}`, 380, 69, C.panelSoft, -205 + (i % 2) * 410, 52 - Math.floor(i / 2) * 82, T.radius.card, C.bronzeSoft);
-            this.label(card, plan.name, 17, C.paper, -98, 13, 150, 25, true, HorizontalTextAlignment.LEFT);
-            this.label(card, plan.desc, 12, C.muted, -17, -14, 310, 22, false, HorizontalTextAlignment.LEFT);
-            this.button(card, `PlanGo_${i}`, '执行', 140, 0, 64, 26, plan.action); // 真按钮替代金色文字：明确的可点信号
+            const card = this.panel(parent, `Plan_${i}`, 252, 69, C.panelSoft, -264 + (i % 3) * 264, 52 - Math.floor(i / 2) * 82, T.radius.card, C.bronzeSoft);
+            this.label(card, plan.name, 15, C.paper, -92, 13, 120, 22, true, HorizontalTextAlignment.LEFT);
+            this.label(card, plan.desc, 9, C.muted, -8, -14, 180, 22, false, HorizontalTextAlignment.LEFT);
+            this.button(card, `PlanGo_${i}`, '执行', 82, 0, 56, 24, plan.action); // 真按钮替代金色文字：明确的可点信号
             card.on(Node.EventType.TOUCH_END, plan.action, this);
             this.pressable(card);
             this.entrance(card, i);
@@ -1487,21 +1491,21 @@ export class WarCouncilScreen extends Component {
         this.label(detail, station ? `驻守 · ${station.name}` : '游历 · 未授职', 11, station ? C.paper : C.muted, 0, selected.trait ? -184 : -172, 180, 18, false);
     }
 
-    /** 功业页体：成就徽格（4 列 × 4 行），达成者金框点亮。 */
+    /** 功业页体：成就徽格（5 列 × 4 行），达成者金框点亮。 */
     private renderAchievementsBody(parent: Node): void {
         ACHIEVEMENTS.forEach((a, i) => {
-            const col = i % 4;
-            const row = Math.floor(i / 4);
-            const x = -292 + col * 195;
+            const col = i % 5;
+            const row = Math.floor(i / 5);
+            const x = -304 + col * 152;
             const y = 93 - row * 62;
             const done = this.world.achievements.includes(a.id);
-            const chip = this.panel(parent, `Ach_${a.id}`, 185, 56, done ? new Color(58, 27, 23, 248) : C.panelSoft, x, y, T.radius.chip, done ? C.gold : C.bronzeSoft);
-            this.label(chip, a.name, 12, done ? C.gold : C.muted, -44, 14, 96, 18, true, HorizontalTextAlignment.LEFT);
-            const badge = this.panel(chip, `AchBadge_${a.id}`, 44, 18, done ? new Color(46, 84, 58, 220) : new Color(38, 34, 28, 220), 60, 14, 9, done ? C.green : C.bronzeSoft, false);
-            this.label(badge, done ? '达成' : '未成', 9, done ? C.green : C.muted, 0, 0, 38, 14, true);
-            this.label(chip, a.desc, 8, done ? C.paper : C.muted, -88, -13, 176, 16, false, HorizontalTextAlignment.LEFT);
+            const chip = this.panel(parent, `Ach_${a.id}`, 148, 56, done ? new Color(58, 27, 23, 248) : C.panelSoft, x, y, T.radius.chip, done ? C.gold : C.bronzeSoft);
+            this.label(chip, a.name, 11, done ? C.gold : C.muted, -44, 14, 90, 18, true, HorizontalTextAlignment.LEFT);
+            const badge = this.panel(chip, `AchBadge_${a.id}`, 42, 18, done ? new Color(46, 84, 58, 220) : new Color(38, 34, 28, 220), 50, 14, 9, done ? C.green : C.bronzeSoft, false);
+            this.label(badge, done ? '达成' : '未成', 9, done ? C.green : C.muted, 0, 0, 36, 14, true);
+            this.label(chip, a.desc, 8, done ? C.paper : C.muted, -70, -13, 140, 16, false, HorizontalTextAlignment.LEFT);
             if (done) {
-                this.entrance(chip, i % 4);
+                this.entrance(chip, i % 5);
             }
         });
     }
@@ -1793,6 +1797,54 @@ export class WarCouncilScreen extends Component {
         this.reportCount += 1;
         this.refreshHeader();
         this.showToast('伏兵就位 · 下次突袭胜算大增', 'good');
+        this.renderPageAgain('strategy');
+    }
+
+    /** 劝降：对民心低落的邻境敌城晓以利害，成功则兵不血刃。 */
+    private executePersuade(): void {
+        this.bus.emit('sfx', { name: 'scheme' });
+        const target = this.frontlineCity();
+        if (!target) return this.showToast('境内无敌城可劝', 'bad');
+        if (target.faction === 'tang') return this.showToast('此乃唐土', 'bad');
+        if (target.morale >= PERSUADE_MORALE) return this.showToast(`民心得固（${target.morale}），无可乘之隙`, 'bad');
+        if (this.treasury() < PERSUADE_COST) return this.showToast('黄金不足', 'bad');
+        const result = persuadeSurrender(this.world, target.id, target.faction, this.selfStrategy(), 82, this.treasury(), Math.random);
+        if (result.goldCost) this.deductTreasury(result.goldCost);
+        let body = result.message;
+        if (result.ok && result.cityDefected) {
+            this.world.flags['persuades'] = (Number(this.world.flags['persuades']) || 0) + 1;
+            for (const id of checkAchievements(this.world)) {
+                const def = achievementById(id);
+                if (def) this.bus.emit('achievement', { name: def.name, desc: def.desc });
+            }
+            this.refreshHeader();
+        }
+        this.reports.unshift({ title: result.ok ? '劝降成功' : '劝降未成', body, tone: result.ok ? 'good' : 'bad' });
+        this.reportCount += 1;
+        this.refreshHeader();
+        this.showToast(result.ok ? body : result.message, result.ok ? 'good' : 'bad');
+        this.renderPageAgain('strategy');
+    }
+
+    /** 劫粮焚仓：折损敌城三成粮草。 */
+    private executeBurn(): void {
+        this.bus.emit('sfx', { name: 'scheme' });
+        const target = this.frontlineCity();
+        if (!target) return this.showToast('境内无敌城可焚', 'bad');
+        if (this.treasury() < BURN_COST) return this.showToast('黄金不足', 'bad');
+        const result = burnGranary(target, target.defense, this.selfStrategy(), this.treasury(), Math.random);
+        if (result.goldCost) this.deductTreasury(result.goldCost);
+        if (result.ok) {
+            this.world.flags['burns'] = (Number(this.world.flags['burns']) || 0) + 1;
+            for (const id of checkAchievements(this.world)) {
+                const def = achievementById(id);
+                if (def) this.bus.emit('achievement', { name: def.name, desc: def.desc });
+            }
+        }
+        this.reports.unshift({ title: result.ok ? '焚仓得手' : '焚仓未遂', body: `${target.name}：${result.message}`, tone: result.ok ? 'good' : 'bad' });
+        this.reportCount += 1;
+        this.refreshHeader();
+        this.showToast(result.message, result.ok ? 'good' : 'bad');
         this.renderPageAgain('strategy');
     }
 

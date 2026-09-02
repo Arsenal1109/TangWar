@@ -131,8 +131,8 @@ describe('特技结算点', () => {
 });
 
 describe('功业（成就）', () => {
-    it('成就齐备（M4 十项 + M5 扩展六项），id 可反查', () => {
-        expect(ACHIEVEMENTS).toHaveLength(16);
+    it('成就齐备（M4 十项 + M5 扩展六项 + M6 三项），id 可反查', () => {
+        expect(ACHIEVEMENTS).toHaveLength(19);
         expect(achievementById('first-victory')?.name).toBe('首战告捷');
         expect(achievementById('nope')).toBeUndefined();
     });

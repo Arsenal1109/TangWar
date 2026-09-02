@@ -128,8 +128,8 @@ describe('联姻深化', () => {
 });
 
 describe('成就扩展（16 项）', () => {
-    it('成就总数达 16，新增项可解锁', () => {
-        expect(ACHIEVEMENTS).toHaveLength(16);
+    it('成就总数达 19（M6 追加三项），新增项可解锁', () => {
+        expect(ACHIEVEMENTS).toHaveLength(19);
         expect(ACHIEVEMENTS.map((a) => a.id)).toEqual(expect.arrayContaining([
             'veteran-army', 'blitz', 'comeback', 'gold-hoard', 'general-star', 'granary'
         ]));

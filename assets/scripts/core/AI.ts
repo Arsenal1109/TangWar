@@ -166,6 +166,22 @@ export function applyAiActions(world: WorldState, actions: AiAction[], rng: () =
             removeArmy(target, result.defenderLoss);
             if (result.attackerWin) {
                 target.faction = a.faction;
+                // 唐土守将命运：五成走脱（卸任游历），三成被俘改旗，两成殁于阵前
+                if (target.generalId) {
+                    const g = world.generals.find((item) => item.id === target.generalId);
+                    if (g && g.faction === 'tang') {
+                        const r2 = rng();
+                        if (r2 < 0.5) {
+                            g.assignment = null; // 走脱，日后可再授职
+                        } else if (r2 < 0.8) {
+                            g.faction = a.faction;
+                            g.loyalty = 40;
+                            g.assignment = null;
+                        } else {
+                            world.generals = world.generals.filter((item) => item.id !== g.id);
+                        }
+                    }
+                }
                 target.generalId = null;
                 target.defense = Math.min(target.defense, 5);
                 target.morale = 60;

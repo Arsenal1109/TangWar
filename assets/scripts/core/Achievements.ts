@@ -123,6 +123,24 @@ export const ACHIEVEMENTS: AchievementDef[] = [
         name: '粮秣如山',
         desc: '唐土积粮达 15000 石',
         check: (w) => tangCities(w).reduce((s, c) => s + c.food, 0) >= 15000
+    },
+    {
+        id: 'no-blood',
+        name: '兵不血刃',
+        desc: '首次劝降敌城归唐',
+        check: (w) => flagNum(w, 'persuades') >= 1
+    },
+    {
+        id: 'general-slayer',
+        name: '阵斩敌将',
+        desc: '首次阵斩敌方守将',
+        check: (w) => flagNum(w, 'kills') >= 1
+    },
+    {
+        id: 'burn-granary',
+        name: '火焚其粮',
+        desc: '三次劫粮焚仓得手',
+        check: (w) => flagNum(w, 'burns') >= 3
     }
 ];
 
