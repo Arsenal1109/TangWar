@@ -10,6 +10,7 @@ import { runWorldTurn } from './core/TurnFlow';
 import { createGeneralStates } from './core/GeneralSystem';
 import { createDiplomacyState } from './core/Diplomacy';
 import { applyDifficultyStart } from './core/Difficulty';
+import { applyScenario, scenarioOf } from './core/Scenarios';
 import { resolveEnvoy, type EnvoyOffer } from './core/AIDiplomacy';
 import type { CityState } from './core/ResourceSystem';
 
@@ -32,6 +33,8 @@ export interface GameEvents {
     'envoy-offer': { faction: string; kind: 'peace' | 'demand'; gold?: number; truceTurns: number; message: string };
     /** 玩家对要约的抉择结果 */
     'envoy-respond': { accept: boolean };
+    /** 新局剧本选定（难度弹窗之后；对既有世界做归属/年代改写） */
+    'scenario-chosen': { id: string };
 }
 
 @ccclass('Bootstrap')
@@ -192,6 +195,15 @@ export class Bootstrap extends Component {
             }
             resolveEnvoy(this.world, this.pendingEnvoy, accept);
             this.pendingEnvoy = null;
+            this.saveMgr.save(this.world);
+        });
+
+        // 新局剧本：难度应用之后改写归属/年代（不可被难度倍率覆盖），并同步回合运行态
+        this.bus.on('scenario-chosen', ({ id }) => {
+            const scenario = applyScenario(this.world, id);
+            this.turns.year = scenario.year;
+            this.turns.seasonIndex = 2;
+            this.turns.turn = 0;
             this.saveMgr.save(this.world);
         });
 

@@ -37,6 +37,7 @@ import type { WorldState } from '../core/WorldState';
 import { TurnManager } from '../core/TurnManager';
 import { createWorld } from '../core/WorldState';
 import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
+import { SCENARIOS } from '../core/Scenarios';
 import { AUTO_SLOT } from '../core/SaveSlots';
 import type { SaveManager } from './SaveManager';
 import { FACTIONS, getFaction } from '../data/Factions';
@@ -360,12 +361,45 @@ export class WarCouncilScreen extends Component {
                 this.bus.emit('sfx', { name: 'diplomacy' });
                 this.showToast(`难度已定：${def.name}`, 'normal');
                 this.removeGuide();
-                this.showOpening();
+                this.showScenarioChoice();
             }, this);
             this.pressable(card);
             this.entrance(card, i);
         });
         this.label(layer, '难度将写入存档，本局不可更改', 10, C.bronze, 0, -110, 420, 18, true);
+    }
+
+    /** 新局剧本选择：两段历史切入时刻（太原起兵/关中既定），选定后改写世界并进序章。 */
+    private showScenarioChoice(): void {
+        this.removeGuide();
+        const layer = this.container(this.node, 'ScenarioChoice', this.width, this.height, 33);
+        layer.setPosition(0, 0, 33);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+        this.image(layer, 'ScenMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'ScenShade', this.width, this.height, new Color(4, 4, 4, 226), 0, 0);
+        this.label(layer, '请择起势之时', 14, C.gold, 0, 128, 420, 22, true);
+        this.label(layer, '同一段历史，不同的入局时刻与天下格局', 13, C.muted, 0, 104, 460, 20, true);
+        SCENARIOS.forEach((sc, i) => {
+            const x = SCENARIOS.length === 1 ? 0 : -140 + i * 280;
+            const tag = sc.id === 'guanzhong621' ? '决胜五年' : '史实开局';
+            const card = this.panel(layer, `Scen_${sc.id}`, 260, 148, new Color(22, 20, 17, 248), x, 8, T.radius.card, i === 0 ? C.green : C.cinnabar, false);
+            this.rect(card, 'ScenAccent', 4, 116, i === 0 ? C.green : C.cinnabar, -124, 0, 2);
+            this.label(card, sc.name, 22, C.paper, 0, 48, 220, 30, true);
+            this.label(card, sc.desc, 10, C.muted, 0, 2, 240, 58, false);
+            this.label(card, `${tag} · ${TurnManager.eraName(sc.year)}始`, 11, i === 0 ? C.green : C.cinnabar, 0, -52, 240, 18, true);
+            card.on(Node.EventType.TOUCH_END, () => {
+                this.bus.emit('scenario-chosen', { id: sc.id });
+                this.bus.emit('sfx', { name: 'diplomacy' });
+                this.showToast(`起势之时已定：${sc.name}`, 'normal');
+                this.removeGuide();
+                this.showOpening();
+            }, this);
+            this.pressable(card);
+            this.entrance(card, i);
+        });
+        this.label(layer, '剧本只在新局时可选，进行中的战局不受影响', 10, C.bronze, 0, -110, 460, 18, true);
     }
 
     /** 群雄遣使弹窗：求和/勒索二选一，抉择经事件总线回 Bootstrap 结算。 */
