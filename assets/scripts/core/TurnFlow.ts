@@ -4,6 +4,7 @@ import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
 import { tickWorldMarches } from './MarchSystem';
+import { tickPacts, updateAiDiplomacy, type EnvoyOffer } from './AIDiplomacy';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
 
@@ -13,10 +14,14 @@ export interface TurnOutcome {
     victory: VictoryResult | null;
     /** 领土急报：本回合 AI 攻占的唐城（UI 以急报级呈现） */
     alerts: string[];
+    /** 群雄遣使要约（求和/勒索），需玩家抉择；无则 null */
+    envoy: EnvoyOffer | null;
 }
 
-// 单回合装配：行军到达 → AI → 资源结算 → 历史事件 → 胜负判定，收集战报后清空 log
+// 单回合装配：停战计时 → 行军到达 → AI → 资源结算 → 历史事件 → 外交推演 → 胜负判定
 export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome {
+    const rand = rng ?? Math.random;
+    tickPacts(world);
     tickWorldMarches(world, rng);
 
     const actions = decideFactions(world, rng);
@@ -55,13 +60,17 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
 
     const ev = checkHistoricalEvents(world);
 
+    // 群雄外交推演：合纵结盟写日志，遣使要约交玩家抉择
+    const envoy = updateAiDiplomacy(world, rand);
+
     const victory = checkVictory(world);
 
     const out: TurnOutcome = {
         log: [...world.log],
         eventNames: ev.names,
         victory: victory.finished ? victory : null,
-        alerts
+        alerts,
+        envoy
     };
     world.log = [];
     return out;

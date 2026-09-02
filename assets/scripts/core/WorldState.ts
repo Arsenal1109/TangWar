@@ -3,6 +3,8 @@ import type { GeneralState } from './GeneralSystem';
 import type { DiplomacyState } from './Diplomacy';
 import type { MarchOrder } from './MarchSystem';
 import type { DifficultyId } from './Difficulty';
+import type { AiPacts } from './AIDiplomacy';
+import { createAiPacts } from './AIDiplomacy';
 
 // 全局运行态：城池 + 年月 + 历史分支标志 + 每回合战报
 export interface WorldState {
@@ -18,6 +20,8 @@ export interface WorldState {
     marches: MarchOrder[];
     /** 难度分级：影响群雄攻性与经济；存档 v2 起持久化，旧档缺省 standard */
     difficulty: DifficultyId;
+    /** 群雄外交运行态：与唐停战 + 合纵盟约；存档 v2 起持久化 */
+    pacts: AiPacts;
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }
@@ -39,6 +43,7 @@ export function createWorld(
         diplomacy: diplomacy ?? { relations: {}, allies: [], atWar: [] },
         marches,
         difficulty,
+        pacts: createAiPacts(),
         flags: {},
         log: []
     };

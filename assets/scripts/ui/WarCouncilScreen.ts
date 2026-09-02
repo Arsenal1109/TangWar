@@ -260,6 +260,7 @@ export class WarCouncilScreen extends Component {
             this.refreshReport();
         });
         this.bus.on('game-ended', (event) => this.showEndingScreen(event.grade, event.message));
+        this.bus.on('envoy-offer', (offer) => this.showEnvoyModal(offer));
         return this;
     }
 
@@ -363,6 +364,41 @@ export class WarCouncilScreen extends Component {
             this.entrance(card, i);
         });
         this.label(layer, '难度将写入存档，本局不可更改', 10, C.bronze, 0, -110, 420, 18, true);
+    }
+
+    /** 群雄遣使弹窗：求和/勒索二选一，抉择经事件总线回 Bootstrap 结算。 */
+    private showEnvoyModal(offer: { faction: string; kind: 'peace' | 'demand'; gold?: number; truceTurns: number; message: string }): void {
+        if (this.endingShown) {
+            return; // 已分胜负：来使不再打断结局画面
+        }
+        this.removeGuide();
+        const layer = this.container(this.node, 'EnvoyModal', this.width, this.height, 40);
+        layer.setPosition(0, 0, 40);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.guideLayer = layer;
+        this.rect(layer, 'EnvoyShade', this.width, this.height, new Color(4, 4, 4, 216), 0, 0);
+        const card = this.panel(layer, 'EnvoyCard', 380, 170, new Color(22, 20, 17, 250), 0, 0, T.radius.card, C.gold, false);
+        this.rect(card, 'EnvoyAccent', 4, 140, C.cinnabar, -182, 0, 2);
+        this.image(card, 'EnvoySeal', 'redesign/icons/council-envoy', 30, 30, -158, 62, 15);        this.label(card, offer.kind === 'demand' ? '遣使勒索' : '遣使求和', 19, C.gold, 0, 62, 200, 26, true);
+        this.label(card, offer.message, 12, C.paper, 0, 8, 340, 62, false);
+        const cta = offer.kind === 'demand'
+            ? `纳金 ${offer.gold ?? 300} · 停战${offer.truceTurns}季`
+            : `允和 · 罢兵${offer.truceTurns}季`;
+        this.label(card, '邦交动向将记入天下大事', 9, C.bronze, 0, -46, 320, 16, true);
+        this.button(card, 'EnvoyAccept', '接受', -70, -70, 110, 30, () => {
+            this.bus.emit('envoy-respond', { accept: true });
+            this.bus.emit('sfx', { name: 'diplomacy' });
+            this.showToast(offer.kind === 'demand' ? '已纳岁币，暂息兵戈' : '已允和，两军罢兵', 'good');
+            this.removeGuide();
+        });
+        this.button(card, 'EnvoyRefuse', '回绝', 70, -70, 110, 30, () => {
+            this.bus.emit('envoy-respond', { accept: false });
+            this.bus.emit('sfx', { name: 'alert' });
+            this.showToast('已回绝来使', 'bad');
+            this.removeGuide();
+        });
+        this.entrance(card, 0);
     }
 
     private buildMap(): void {

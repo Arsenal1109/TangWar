@@ -1,6 +1,7 @@
 import type { WorldState } from './WorldState';
 import type { CityState } from './ResourceSystem';
 import type { TroopType } from '../data/Troops';
+import type { AiPacts } from './AIDiplomacy';
 
 export const SAVE_VERSION = 2;
 
@@ -53,6 +54,8 @@ export interface SaveData {
     marches?: SaveMarch[];
     /** v2 起可选：难度分级；旧档缺省回落标准 */
     difficulty?: string;
+    /** v2 起可选：群雄外交运行态（停战/合纵）；旧档缺省空白态势 */
+    pacts?: AiPacts;
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -91,7 +94,13 @@ export function serializeSave(world: WorldState): SaveData {
             command: m.command,
             faction: m.faction
         })),
-        difficulty: world.difficulty
+        difficulty: world.difficulty,
+        pacts: {
+            truces: { ...world.pacts.truces },
+            coalition: world.pacts.coalition
+                ? { target: world.pacts.coalition.target, members: [...world.pacts.coalition.members], turnsLeft: world.pacts.coalition.turnsLeft }
+                : null
+        }
     };
 }
 
@@ -167,5 +176,14 @@ export function applySave(world: WorldState, data: SaveData): void {
     world.difficulty = (data.difficulty === 'easy' || data.difficulty === 'normal' || data.difficulty === 'hard')
         ? data.difficulty
         : 'normal';
+    // 旧档缺省空白外交态势； coalition 结构做最小防御校验
+    if (data.pacts && typeof data.pacts.truces === 'object') {
+        world.pacts.truces = { ...data.pacts.truces };
+        world.pacts.coalition = data.pacts.coalition
+            && typeof data.pacts.coalition.target === 'string'
+            && Array.isArray(data.pacts.coalition.members)
+            ? { target: data.pacts.coalition.target, members: [...data.pacts.coalition.members], turnsLeft: data.pacts.coalition.turnsLeft }
+            : null;
+    }
     world.log = [];
 }

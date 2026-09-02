@@ -5,6 +5,7 @@ import { neighborsOf } from '../data/Cities';
 import { resolveBattle } from './BattleSystem';
 import { removeArmy } from './Army';
 import { difficultyOf } from './Difficulty';
+import { isTrucedWithTang } from './AIDiplomacy';
 import type { FactionPersonality } from './Types';
 
 export type AiActionKind = 'expand' | 'reinforce';
@@ -31,8 +32,10 @@ const EXPEDITION_RATIO = 0.6;
 /** 发兵门槛：出发城至少要留有此数的远征兵力才敢动兵。 */
 const EXPEDITION_MIN_TROOPS = 1500;
 
-/** 找出势力边境上的可攻敌城（邻接他势之城），综合城防/守军取最弱者。 */
-function adjacentTarget(world: WorldState, faction: string): { id: string; name: string } | null {
+/** 找出势力边境上的可攻敌城（邻接他势之城），综合城防/守军取最弱者。
+ *  onlyFaction：只考虑该势力之城（合纵成员优先攻打盟主）；
+ *  excludeFactions：跳过这些势力之城（与唐停战者不攻唐土）。 */
+function adjacentTarget(world: WorldState, faction: string, onlyFaction?: string, excludeFactions?: ReadonlySet<string>): { id: string; name: string } | null {
     let best: { id: string; name: string; defense: number; army: number } | null = null;
     for (const own of world.cities) {
         if (own.faction !== faction) {
@@ -41,6 +44,12 @@ function adjacentTarget(world: WorldState, faction: string): { id: string; name:
         for (const n of neighborsOf(own.id)) {
             const target = world.cities.find((c) => c.id === n.id);
             if (!target || target.faction === faction) {
+                continue;
+            }
+            if (onlyFaction && target.faction !== onlyFaction) {
+                continue;
+            }
+            if (excludeFactions && excludeFactions.has(target.faction)) {
                 continue;
             }
             const better = !best
@@ -97,7 +106,22 @@ export function decideFactions(world: WorldState, rng?: () => number): AiAction[
             continue;
         }
         const charm = EXPAND_CHANCE[def.personality] * difficultyOf(world.difficulty).aiAggression;
-        const target = adjacentTarget(world, f);
+        // 与唐停战者不攻唐土：本势力在停战中 → 唐土受保护（其余目标照常）
+        const protectedFactions = new Set<string>();
+        if (isTrucedWithTang(world, f)) {
+            protectedFactions.add('tang');
+        }
+        // 合纵成员优先攻打盟主之城；无接壤盟主城再退回常规选目标
+        const coalition = world.pacts.coalition;
+        const inCoalition = coalition != null && coalition.members.includes(f)
+            && !(coalition.target === 'tang' && protectedFactions.has('tang'));
+        let target: { id: string; name: string } | null = null;
+        if (inCoalition && coalition) {
+            target = adjacentTarget(world, f, coalition.target);
+        }
+        if (!target) {
+            target = adjacentTarget(world, f, undefined, protectedFactions);
+        }
         const source = target ? expeditionSource(world, f, target.id) : null;
         if (rand() < charm && target && source) {
             actions.push({ faction: f, kind: 'expand', targetCityId: target.id, sourceCityId: source, detail: `${def.name}进攻${target.name}` });
