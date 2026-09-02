@@ -3,6 +3,7 @@ import { resolveTurn } from './ResourceSystem';
 import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
 import { checkVictory, type VictoryResult } from './Victory';
+import { tickWorldMarches } from './MarchSystem';
 
 export interface TurnOutcome {
     log: string[];
@@ -10,8 +11,10 @@ export interface TurnOutcome {
     victory: VictoryResult | null;
 }
 
-// 单回合装配：AI → 资源结算 → 历史事件 → 胜负判定，收集战报后清空 log
+// 单回合装配：行军到达 → AI → 资源结算 → 历史事件 → 胜负判定，收集战报后清空 log
 export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome {
+    tickWorldMarches(world, rng);
+
     const actions = decideFactions(world, rng);
     applyAiActions(world, actions);
 

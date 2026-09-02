@@ -25,6 +25,51 @@ export const CITIES: CityDef[] = [
     { id: 'guangzhou', name: '广州', x: 358, y: 452, faction: 'chu', tier: 1 }
 ];
 
+// 城池邻接图：模拟真实地理通道（太行陉/潼关道/淮泗线等），
+// 约束行军与 AI 扩张——不再允许跨全图瞬移攻击。保持无向对称。
+export const ADJACENCY: Record<string, string[]> = {
+    taiyuan: ['jinyang', 'mayi', 'shuofang', 'ye', 'luoyang'],
+    jinyang: ['taiyuan', 'xingyang', 'ye', 'mayi'],
+    changan: ['luoyang', 'lanzhou', 'chengdu'],
+    jiangdu: ['lishan', 'jiankang', 'pengcheng', 'qingzhou'],
+    luoyang: ['changan', 'taiyuan', 'xingyang', 'ye'],
+    xingyang: ['jinyang', 'luoyang', 'pengcheng'],
+    ye: ['taiyuan', 'jinyang', 'luoyang', 'youzhou', 'qingzhou'],
+    jiangling: ['chengdu', 'yuzhang', 'lishan'],
+    lanzhou: ['changan', 'wuwei', 'shuofang'],
+    wuwei: ['lanzhou'],
+    shuofang: ['lanzhou', 'taiyuan', 'mayi'],
+    mayi: ['taiyuan', 'shuofang', 'jinyang', 'yuyang'],
+    yuyang: ['mayi', 'youzhou'],
+    lishan: ['jiangdu', 'jiankang', 'pengcheng', 'jiangling'],
+    kuiji: ['yuzhang', 'jiankang'],
+    yuzhang: ['jiangling', 'kuiji', 'guangzhou'],
+    chengdu: ['changan', 'jiangling'],
+    jiankang: ['jiangdu', 'lishan', 'kuiji'],
+    youzhou: ['ye', 'yuyang', 'qingzhou'],
+    pengcheng: ['xingyang', 'jiangdu', 'lishan', 'qingzhou'],
+    qingzhou: ['ye', 'youzhou', 'pengcheng', 'jiangdu'],
+    guangzhou: ['yuzhang']
+};
+
+/** 取邻接城池定义列表（数据缺失时返回空数组，防御存档/数据漂移）。 */
+export function neighborsOf(id: string): CityDef[] {
+    const ids = ADJACENCY[id] ?? [];
+    return ids
+        .map((nid) => CITIES.find((c) => c.id === nid))
+        .filter((c): c is CityDef => c != null);
+}
+
+/** 两城是否相邻（行军/突袭的合法性判定）。 */
+export function isAdjacent(a: string, b: string): boolean {
+    return (ADJACENCY[a] ?? []).includes(b);
+}
+
+/** 两城平面距离（视图坐标系），用于"就近"目标选择。 */
+export function cityDistance(a: CityDef, b: CityDef): number {
+    return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
 export function getCity(id: string): CityDef {
     const c = CITIES.find((item) => item.id === id);
     if (!c) {

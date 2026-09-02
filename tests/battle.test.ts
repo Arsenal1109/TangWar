@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveBattle, type BattleArmy } from '../assets/scripts/core/BattleSystem';
+import { resolveBattle, winProbability, type BattleArmy } from '../assets/scripts/core/BattleSystem';
 
 // 胜掷 r 满足 r < attWinProb 则攻方胜：
 //   低掷(0.05)≈强攻得手；高掷(0.95)≈守方得手；中掷(0.5)看概率。
@@ -51,5 +51,23 @@ describe('BattleSystem 战争结算', () => {
         const def = army(70, { fubing: 5000, jingbing: 1000 });
         const r = resolveBattle(att, def, { rng: MID_ROLL }); // r=0.5 接近胜率判决
         expect(Math.abs(r.attackerLoss - r.defenderLoss)).toBeLessThan(1500);
+    });
+
+    it('winProbability：确定性胜算，供 UI 实时显示', () => {
+        const att = army(60, { fubing: 8000 });
+        const def = army(70, { fubing: 4000, nubing: 2000 });
+        // 城防越高，攻方胜率越低
+        const openField = winProbability(att, def);
+        const walled = winProbability(att, def, { cityDefense: 20 });
+        expect(walled).toBeLessThan(openField);
+        expect(openField).toBeGreaterThan(0);
+        expect(openField).toBeLessThan(1);
+        // 空城必胜、空攻方必败
+        expect(winProbability(att, army(50, {}), { cityDefense: 20 })).toBe(1);
+        expect(winProbability(army(50, {}), def)).toBe(0);
+        // 与 resolveBattle 的判决一致：胜掷小于胜率时攻方胜
+        const p = winProbability(att, def);
+        expect(resolveBattle(att, def, { rng: () => p - 0.01 }).attackerWin).toBe(true);
+        expect(resolveBattle(att, def, { rng: () => p + 0.01 }).attackerWin).toBe(false);
     });
 });

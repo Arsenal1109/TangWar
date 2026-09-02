@@ -45,6 +45,7 @@ declare module 'cc' {
   export const Canvas: any; export type Canvas = any;
   export const ResolutionPolicy: any; export type ResolutionPolicy = any;
   export const isValid: any;
+  export const game: any; export type game = any;
 }
 EOF
 

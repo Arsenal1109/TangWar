@@ -1,4 +1,5 @@
 import { CITIES } from '../data/Cities';
+import { INITIAL_GENERAL_CITY } from '../data/Generals';
 import type { CityState } from './ResourceSystem';
 
 export function createCityStates(): CityState[] {
@@ -12,7 +13,7 @@ export function createCityStates(): CityState[] {
         army: c.tier === 1 ? 8000 : 4000,
         defense: 5,
         morale: 80,
-        generalId: null,
+        generalId: INITIAL_GENERAL_CITY[c.id] ?? null,
         facilities: { farm: 1, market: 0, barracks: 0, granary: 0 },
         policyUsed: false,
         troops: { fubing: c.tier === 1 ? 8000 : 4000, jingbing: 0, qibing: 0, nubing: 0, xuanjia: 0, shuijun: 0 }

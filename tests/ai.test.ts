@@ -19,13 +19,23 @@ function twoFactionWorld(ai: string): ReturnType<typeof createWorld> {
 }
 
 describe('AI 群雄决策', () => {
-    it('低随机压过低进取型概率时吞噬最弱敌势一城', () => {
-        const w = twoFactionWorld('qin'); // 秦·薛举＝aggressive 0.55
-        const tangCity = w.cities.find((c) => c.faction === 'tang')!.id;
+    it('低随机压过低进取型概率时，进攻相邻的唐城（秦自陇西取长安）', () => {
+        const w = twoFactionWorld('qin'); // 秦·薛举＝aggressive 0.55，据陇西与长安相邻
         const actions = decideFactions(w, LOW);
         applyAiActions(w, actions);
-        expect(w.cities.some((c) => c.id === tangCity && c.faction !== 'tang')).toBe(true);
-        expect(actions.some((a) => a.kind === 'expand')).toBe(true);
+        expect(w.cities.some((c) => c.id === 'changan' && c.faction === 'qin')).toBe(true);
+        expect(actions.some((a) => a.kind === 'expand' && a.targetCityId === 'changan')).toBe(true);
+    });
+
+    it('AI 只进攻邻接城池，不再跨全图瞬移（凉州够不着太原）', () => {
+        const w = twoFactionWorld('liang'); // 凉·李轨＝defensive，凉州与唐城不相邻
+        const before = w.cities.map((c) => `${c.id}:${c.faction}`).join(',');
+        const actions = decideFactions(w, LOW); // 即便随机鼓励扩张
+        applyAiActions(w, actions);
+        const expanded = actions.filter((a) => a.kind === 'expand');
+        // 凉州唯一邻城陇西在 twoFactionWorld 中已被剔除 → 无邻接目标 → 不可扩张
+        expect(expanded.length).toBe(0);
+        expect(w.cities.map((c) => `${c.id}:${c.faction}`).join(',')).toBe(before);
     });
 
     it('进取型 AI 从不替代玩家唐', () => {

@@ -1,4 +1,7 @@
 import type { CityState } from './ResourceSystem';
+import type { GeneralState } from './GeneralSystem';
+import type { DiplomacyState } from './Diplomacy';
+import type { MarchOrder } from './MarchSystem';
 
 // 全局运行态：城池 + 年月 + 历史分支标志 + 每回合战报
 export interface WorldState {
@@ -6,12 +9,34 @@ export interface WorldState {
     seasonIndex: number;
     turn: number;
     cities: CityState[];
+    /** 全体将领运行态（含敌方），忠诚度变化在此结算 */
+    generals: GeneralState[];
+    /** 唐室对外关系（玩家视角），存档 v2 起持久化 */
+    diplomacy: DiplomacyState;
+    /** 进行中的行军令（调兵/出征） */
+    marches: MarchOrder[];
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }
 
-export function createWorld(year: number, cities: CityState[]): WorldState {
-    return { year, seasonIndex: 2, turn: 0, cities, flags: {}, log: [] };
+export function createWorld(
+    year: number,
+    cities: CityState[],
+    generals: GeneralState[] = [],
+    diplomacy?: DiplomacyState,
+    marches: MarchOrder[] = []
+): WorldState {
+    return {
+        year,
+        seasonIndex: 2,
+        turn: 0,
+        cities,
+        generals,
+        diplomacy: diplomacy ?? { relations: {}, allies: [], atWar: [] },
+        marches,
+        flags: {},
+        log: []
+    };
 }
 
 export function citiesOf(world: WorldState, faction: string): CityState[] {

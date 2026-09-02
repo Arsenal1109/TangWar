@@ -7,6 +7,8 @@ import { WarCouncilScreen } from './ui/WarCouncilScreen';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
 import { createWorld, type WorldState } from './core/WorldState';
 import { runWorldTurn } from './core/TurnFlow';
+import { createGeneralStates } from './core/GeneralSystem';
+import { createDiplomacyState } from './core/Diplomacy';
 import type { CityState } from './core/ResourceSystem';
 
 const { ccclass } = _decorator;
@@ -18,6 +20,8 @@ export interface GameEvents {
     'world-events': { title: string; messages: string[] };
     'save-requested': Record<string, never>;
     'audio-setting': { music: boolean };
+    /** 结局触发（胜负判定成立时发出一次） */
+    'game-ended': { grade: string; message: string };
 }
 
 @ccclass('Bootstrap')
@@ -37,7 +41,8 @@ export class Bootstrap extends Component {
             // 额外宽度交给全域战图自然延展。
             view.setDesignResolutionSize(844, 390, ResolutionPolicy.FIXED_HEIGHT);
             this.cityStates = createCityStates();
-            this.world = createWorld(this.turns.year, this.cityStates);
+            // 将领运行态（含敌方群雄）与唐室外交关系进入世界态，随存档持久化
+            this.world = createWorld(this.turns.year, this.cityStates, createGeneralStates(), createDiplomacyState());
 
             // UI 创建前恢复存档，确保首屏年代、季节和资源与存档一致。
             this.saveMgr = this.node.addComponent(SaveManager);
@@ -150,7 +155,7 @@ export class Bootstrap extends Component {
         // 新版首屏把原本分散的地图、详情卡和五项导航收束成一个完整回合决策流。
         const screen = new Node('WarCouncilScreen');
         this.uiRoot.addChild(screen);
-        screen.addComponent(WarCouncilScreen).init(this.turns, this.bus, this.cityStates);
+        screen.addComponent(WarCouncilScreen).init(this.turns, this.bus, this.cityStates, this.world);
 
         // 音效管理仍沿用原有事件总线，后续可直接替换真实音频资源。
         this.node.addComponent(SoundManager).init(this.bus);
@@ -162,7 +167,7 @@ export class Bootstrap extends Component {
             this.saveMgr.save(this.world);
         });
 
-        // 回合推进：同步运行态、结算 AI/资源/事件/结局，清空各城施政标记
+        // 回合推进：同步运行态、结算行军/AI/资源/事件/结局，清空各城施政标记
         this.bus.on('turn-advanced', (p) => {
             this.world.year = this.turns.year;
             this.world.seasonIndex = this.turns.seasonIndex;
@@ -173,6 +178,7 @@ export class Bootstrap extends Component {
             }
             if (out.victory) {
                 console.log(`[结局] ${out.victory.grade}：${out.victory.message}`);
+                this.bus.emit('game-ended', { grade: out.victory.grade, message: out.victory.message });
             }
             resetTurnFlags(this.cityStates);
             console.log(`[回合] ${p.year} ${p.season} 第 ${p.turn} 回合`);

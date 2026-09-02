@@ -46,6 +46,19 @@ function counterBonus(att: Record<TroopType, number>, def: Record<TroopType, num
     return bonus;
 }
 
+/** 攻方胜率（0..1）：resolveBattle 的确定性部分，供 UI 实时显示与单测断言。 */
+export function winProbability(att: BattleArmy, def: BattleArmy, opts: Pick<BattleOptions, 'cityDefense' | 'riverPenalty'> = {}): number {
+    const riverPenalty = opts.riverPenalty ?? 0;
+    const cityBonus = (opts.cityDefense ?? 0) * 0.05;
+    const attPower = powerOf(att.troops, att.generalCommand, true) * (1 - riverPenalty) + counterBonus(att.troops, def.troops);
+    const defPower = powerOf(def.troops, def.generalCommand, false) * (1 + cityBonus);
+    const attTotal = totalOf(att.troops);
+    const defTotal = totalOf(def.troops);
+    if (attTotal <= 0) return 0;
+    if (defTotal <= 0) return 1;
+    return attPower / (attPower + defPower);
+}
+
 export function resolveBattle(att: BattleArmy, def: BattleArmy, opts: BattleOptions = {}): BattleResult {
     const rng = opts.rng ?? Math.random;
     const r = rng(); // 0..1 胜掷

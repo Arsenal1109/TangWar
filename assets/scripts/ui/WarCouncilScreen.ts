@@ -3,6 +3,7 @@ import {
     Color,
     Component,
     Font,
+    game,
     Graphics,
     HorizontalTextAlignment,
     Label,
@@ -23,16 +24,23 @@ import {
 } from 'cc';
 import type { GameEvents } from '../Bootstrap';
 import type { EventBus } from '../core/EventBus';
-import { createDiplomacyState, performDiplo, type DiplomacyState } from '../core/Diplomacy';
+import { createDiplomacyState, performDiplo, type DiplomacyState, type DiploAction } from '../core/Diplomacy';
+import { executeCouncilOrder, raidTarget, raidOdds, commandOf, COUNCIL_COSTS, type CouncilOutcome } from '../core/CommandSystem';
+import { canMarch, createMarch, tickWorldMarches } from '../core/MarchSystem';
 import { recruit } from '../core/Military';
 import { applyPolicy } from '../core/PolicySystem';
+import { buildFacility, facilityCost, facilityName, FACILITY_MAX, type FacilityType } from '../core/FacilitySystem';
+import { sowDiscord, bribeGeneral, spreadRumor } from '../core/Stratagem';
+import type { GeneralState } from '../core/GeneralSystem';
 import type { CityState } from '../core/ResourceSystem';
-import { spreadRumor } from '../core/Stratagem';
+import type { WorldState } from '../core/WorldState';
 import { TurnManager } from '../core/TurnManager';
+import { createWorld } from '../core/WorldState';
 import { FACTIONS } from '../data/Factions';
 import { GENERALS } from '../data/Generals';
 import { POLICIES } from '../data/Policies';
 import { TROOP_ORDER, TROOPS, type TroopType } from '../data/Troops';
+import { neighborsOf, getCity } from '../data/Cities';
 
 const { ccclass } = _decorator;
 
@@ -149,6 +157,7 @@ export class WarCouncilScreen extends Component {
     private turns!: TurnManager;
     private bus!: EventBus<GameEvents>;
     private states: CityState[] = [];
+    private world!: WorldState;
     private diplomacy!: DiplomacyState;
     private width = 844;
     private height = 390;
@@ -164,9 +173,10 @@ export class WarCouncilScreen extends Component {
     private selectedCityId = 'taiyuan';
     private selectedPolicyId: string | null = null;
     private selectedFactionId: string | null = null;
+    private marchPanelOpen = false;
+    private endingShown = false;
     private intelFilter: 'all' | '军情' | '急报' | '捷报' = 'all';
     private page: PageKey = 'world';
-    private enemyStrength = 12000;
     private reportOpen = true;
     private reportCount = 3;
     private reports: ReportEntry[] = [
@@ -208,18 +218,22 @@ export class WarCouncilScreen extends Component {
     private resourceRoll = { t: 1 };
     private lastHeader: { food: number; gold: number; army: number; morale: number } | null = null;
     private bodyFont: Font | null = null;
+    private cityCardStats: Label | null = null;
     private labelRegistry: Label[] = [];
     private panelSkins = new Map<string, SpriteFrame>();
     private pendingSkins: Array<{ node: Node; skin: string }> = [];
 
-    init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[]): this {
+    init(turns: TurnManager, bus: EventBus<GameEvents>, states: CityState[], world?: WorldState): this {
         this.turns = turns;
         this.bus = bus;
         this.states = states;
-        this.diplomacy = createDiplomacyState('tang');
+        // 世界态（将领/外交/行军）由 Bootstrap 注入并随存档恢复；缺省时自建（预览/单测兜底）
+        this.world = world ?? createWorld(617, states, [], createDiplomacyState('tang'));
+        this.diplomacy = this.world.diplomacy;
         this.build();
         this.bus.on('turn-advanced', () => {
             this.refreshHeader();
+            this.refreshCityCardStats();
             if (this.page !== 'world') this.renderPageAgain(this.page);
         });
         this.bus.on('world-events', (event) => {
@@ -232,6 +246,7 @@ export class WarCouncilScreen extends Component {
             this.reportBadge.string = String(this.reportCount);
             this.refreshReport();
         });
+        this.bus.on('game-ended', (event) => this.showEndingScreen(event.grade, event.message));
         return this;
     }
 
@@ -369,9 +384,20 @@ export class WarCouncilScreen extends Component {
         // 城池名由上方地图"太原"标记承担，卡内不再重复标题，避免与别处"太原"叠字
         this.rect(card, 'CityCardAccent', 4, 30, C.cinnabar, -72, 19, 2);
         this.label(card, '我方城池', 13, C.gold, -8, 29, 124, 21, true);
-        this.label(card, '守军 8,000   城防 68%\n粮草 +600 / 回合', 10, C.paper, -5, 2, 138, 34, false, HorizontalTextAlignment.LEFT);
+        this.cityCardStats = this.label(card, '', 10, C.paper, -5, 2, 138, 34, false, HorizontalTextAlignment.LEFT);
+        this.refreshCityCardStats();
         this.button(card, 'CityRecruit', '调兵', -38, -34, 62, 23, () => this.openPage('army'));
         this.button(card, 'CityManage', '城内', 38, -34, 62, 23, () => this.openPage('cities'));
+    }
+
+    /** 主战页城池卡实时数据：所选唐城的守军/城防/粮草。 */
+    private refreshCityCardStats(): void {
+        if (!this.cityCardStats) return;
+        const city = this.states.find((c) => c.id === this.selectedCityId && c.faction === 'tang')
+            ?? this.states.find((c) => c.id === 'taiyuan');
+        if (!city) return;
+        const general = city.generalId ? GENERALS.find((g) => g.id === city.generalId) : null;
+        this.cityCardStats.string = `守军 ${city.army.toLocaleString()}   城防 ${city.defense}\n粮 ${Math.round(city.food).toLocaleString()}   守将 ${general ? general.name : '无'}`;
     }
 
     private buildCampaignTimeline(): void {
@@ -406,8 +432,9 @@ export class WarCouncilScreen extends Component {
             this.label(this.timelineLayer, title, 10, selected ? C.paper : C.muted, x + 8, 8, stepW - 32, 16, selected);
             this.label(this.timelineLayer, value, 10, selected ? C.gold : C.paper, x + 8, -9, stepW - 32, 16, true);
         });
-        const terrain = option.key === 'raid' ? '山地 +15%' : '平原';
-        this.label(this.timelineLayer, `地形 ${terrain}    胜算 ${option.odds}%    粮耗 ${option.food}`, 10, C.muted, 31, -29, 286, 17, true, HorizontalTextAlignment.RIGHT);
+        const terrain = option.key === 'raid' ? '山地' : '平原';
+        const odds = option.key === 'raid' ? raidOdds(this.world, this.selectedCityId) : option.odds;
+        this.label(this.timelineLayer, `地形 ${terrain}    胜算 ${odds}%    粮耗 ${option.food}`, 10, C.muted, 31, -29, 286, 17, true, HorizontalTextAlignment.RIGHT);
     }
 
     private buildRoute(): void {
@@ -847,6 +874,27 @@ export class WarCouncilScreen extends Component {
         const info = this.panel(cityPanel, 'CitySummary', 164, 55, new Color(49, 39, 27, 220), 0, -69, T.radius.control, C.bronzeSoft, false);
         this.label(info, `${city.name}城况`, 12, C.paper, -46, 16, 64, 18, true, HorizontalTextAlignment.LEFT);
         this.label(info, `人口${city.population.toFixed(1)}万  城防${city.defense}\n金${city.gold.toLocaleString()}  粮${city.food.toLocaleString()}  兵${this.compact(city.army)}`, 9, C.muted, 4, -8, 148, 31, false, HorizontalTextAlignment.LEFT);
+        // 设施建设：农田/商市/兵营/仓廪，真实消耗城池黄金并提升产出（FacilitySystem）
+        const facilityTypes: FacilityType[] = ['farm', 'market', 'barracks', 'granary'];
+        facilityTypes.forEach((ft, fi) => {
+            const level = city.facilities[ft];
+            const cost = facilityCost(ft, level);
+            const maxed = level >= FACILITY_MAX;
+            const affordable = !maxed && city.gold >= cost;
+            const fx = -58.5 + fi * 39;
+            const cell = this.panel(info, `Facility_${ft}`, 36, 20, maxed ? new Color(40, 44, 33, 235) : affordable ? new Color(64, 46, 30, 245) : new Color(32, 30, 26, 235), fx, -41, T.radius.chip, maxed ? C.green : affordable ? C.gold : C.bronzeSoft, false);
+            this.label(cell, `${facilityName(ft).slice(0, 1)}${level}`, 9, maxed ? C.green : affordable ? C.paper : C.muted, 0, 2, 30, 13, true);
+            this.label(cell, maxed ? '满' : `${cost}`, 8, affordable ? C.gold : C.muted, 0, -7, 30, 11, true);
+            if (affordable) {
+                cell.on(Node.EventType.TOUCH_END, () => {
+                    const result = buildFacility(city, ft);
+                    this.showToast(result.ok ? `${city.name} ${facilityName(ft)}升至${city.facilities[ft]}级（-${cost}金）` : result.reason, result.ok ? 'good' : 'bad');
+                    this.refreshHeader();
+                    this.renderPageAgain('cities');
+                }, this);
+                this.pressable(cell);
+            }
+        });
         this.label(parent, '本季政令', 14, C.gold, rightX - rightW / 2 + 54, 91, 100, 22, true, HorizontalTextAlignment.LEFT);
         this.label(parent, city.policyUsed ? '已执行 · 推进回合后刷新' : '每季任选 1 项', 10, city.policyUsed ? C.muted : C.green, rightX + rightW / 2 - 90, 91, 160, 18, true, HorizontalTextAlignment.RIGHT);
         const cardGap = 8;
@@ -900,14 +948,19 @@ export class WarCouncilScreen extends Component {
     private renderArmyPage(): void {
         const parent = this.pageHeader('部队与将领', '募兵直接消耗城池黄金；点选将领可任命为当前城守将。');
         const city = this.selectedCity();
+        const marching = this.world.marches.filter((m) => m.fromId === city.id || m.toId === city.id);
         // 摘要独立占用卡片上方的标题行，避免被募兵卡片的上沿盖住。
         this.label(parent, `${city.name}募兵 · 金 ${city.gold.toLocaleString()} · 总兵 ${city.army.toLocaleString()}`, 16, C.paper, -205, 96, 360, 27, true);
         TROOP_ORDER.slice(0, 5).forEach((type, i) => this.armyCard(parent, type, i));
+        // 行军令：全军开赴相邻城池（己方=调防，敌方=攻城），多回合后到达结算
+        this.marchCard(parent, city);
         this.label(parent, '麾下名将', 17, C.gold, 112, 96, 130, 26, true);
         GENERALS.filter((g) => g.faction === 'tang').slice(0, 5).forEach((general, i) => {
             const row = this.panel(parent, `General_${general.id}`, 305, 32, C.panelSoft, 217, 30 - i * 37, T.radius.control, C.bronzeSoft);
+            const state = this.world.generals.find((gs) => gs.id === general.id);
+            const loyalty = state ? state.loyalty : general.loyalty;
             this.label(row, general.name, 14, C.paper, -102, 0, 76, 22, true, HorizontalTextAlignment.LEFT);
-            this.label(row, `统${general.stats.command} 谋${general.stats.strategy} 勇${general.stats.valor}`, 11, C.muted, 30, 0, 170, 20);
+            this.label(row, `统${general.stats.command} 谋${general.stats.strategy} 勇${general.stats.valor} 忠${loyalty}`, 11, loyalty < 50 ? C.red : C.muted, 30, 0, 190, 20);
             this.affordance(row, 143, 0);
             row.on(Node.EventType.TOUCH_END, () => {
                 city.generalId = general.id;
@@ -919,6 +972,76 @@ export class WarCouncilScreen extends Component {
         });
         const assigned = GENERALS.find((g) => g.id === city.generalId);
         this.label(parent, `当前守将：${assigned?.name ?? '尚未任命'}`, 12, assigned ? C.green : C.muted, 270, 96, 214, 23, true, HorizontalTextAlignment.RIGHT);
+        if (marching.length > 0) {
+            const names = marching.map((m) => `${this.states.find((c) => c.id === m.fromId)?.name ?? '?'}→${this.states.find((c) => c.id === m.toId)?.name ?? '?'}（${m.turnsLeft}回合）`).join('，');
+            this.label(parent, `行军中：${names}`, 10, C.gold, -60, -113, 660, 18, true);
+        }
+    }
+
+    /** 行军/出征卡：占第三行空位，展开后显示相邻城池按钮。 */
+    private marchCard(parent: Node, city: CityState): void {
+        const card = this.panel(parent, 'MarchCard', 154, 48, C.panelSoft, -154, -87, T.radius.control, C.bronzeSoft);
+        if (this.marchPanelOpen) {
+            this.label(card, '点相邻城出兵', 11, C.gold, 0, 14, 140, 16, true);
+            const neighborIds = neighborsOf(city.id).map((n) => n.id).filter((nid) => nid !== city.id);
+            neighborIds.slice(0, 5).forEach((nid, ni) => {
+                const target = this.states.find((c) => c.id === nid);
+                if (!target) return;
+                const own = target.faction === city.faction;
+                const check = canMarch(this.world, city.id, nid);
+                const nx = -70 + (ni % 2) * 70;
+                const ny = -2 - Math.floor(ni / 2) * 18;
+                const chip = this.panel(card, `MarchTo_${nid}`, 66, 16, check.ok ? (own ? new Color(38, 52, 38, 245) : new Color(74, 34, 26, 245)) : new Color(28, 26, 23, 235), nx, ny, T.radius.chip, check.ok ? (own ? C.green : C.cinnabar) : C.bronzeSoft, false);
+                this.label(chip, target.name, 9, check.ok ? C.paper : C.muted, 0, 0, 60, 14, true);
+                if (check.ok) {
+                    chip.on(Node.EventType.TOUCH_END, () => {
+                        this.launchMarch(city, target);
+                    }, this);
+                    this.pressable(chip);
+                }
+            });
+            this.label(card, '再点上方收起', 9, C.muted, 0, -41, 140, 14, true);
+            card.on(Node.EventType.TOUCH_END, () => {
+                this.marchPanelOpen = false;
+                this.renderPageAgain('army');
+            }, this);
+        } else {
+            this.label(card, '行军 · 出征', 14, C.paper, -30, 10, 96, 21, true, HorizontalTextAlignment.LEFT);
+            this.label(card, `全军赴相邻城 · 兵${this.compact(city.army)}`, 10, C.muted, -6, -11, 120, 18, false, HorizontalTextAlignment.LEFT);
+            this.affordance(card, 68, 0);
+            card.on(Node.EventType.TOUCH_END, () => {
+                if (city.army <= 0) return this.showToast('城中无兵可调', 'bad');
+                this.marchPanelOpen = true;
+                this.renderPageAgain('army');
+            }, this);
+        }
+        this.pressable(card);
+        this.entrance(card, 4);
+    }
+
+    /** 下达行军令：全军（含守将统率快照）开赴目标城，抵达时结算进驻或攻城。 */
+    private launchMarch(from: CityState, to: CityState): void {
+        const check = canMarch(this.world, from.id, to.id);
+        if (!check.ok) return this.showToast(check.reason, 'bad');
+        const troops = { ...from.troops };
+        for (const t of TROOP_ORDER) {
+            from.troops[t] = 0;
+        }
+        from.army = 0;
+        const order = createMarch(`march-${this.world.turn}-${from.id}-${to.id}`, getCity(from.id), getCity(to.id), troops);
+        order.command = commandOf(from, this.world.generals);
+        order.faction = from.faction;
+        this.world.marches.push(order);
+        this.marchPanelOpen = false;
+        this.reports.unshift({
+            title: `${from.name}大军开拔`,
+            body: `全军${TROOP_ORDER.reduce((s, t) => s + troops[t], 0).toLocaleString()}开赴${to.name}，约${order.turnsLeft}回合抵达。${to.faction === from.faction ? '（调防）' : '（攻城）'}`,
+            tone: 'normal'
+        });
+        this.reportCount += 1;
+        this.refreshHeader();
+        this.showToast(`${from.name}全军开赴${to.name} · ${order.turnsLeft}回合后抵达`, 'normal');
+        this.renderPageAgain('army');
     }
 
     private armyCard(parent: Node, type: TroopType, i: number): void {
@@ -940,11 +1063,14 @@ export class WarCouncilScreen extends Component {
 
     private renderStrategyPage(): void {
         const parent = this.pageHeader('计策府', '计策消耗黄金并改变敌方状态；高风险行动会进入战报。');
+        const target = this.frontlineCity();
+        const targetGeneral = this.targetGeneralForScheme();
+        const ambushReady = this.world.flags['ambushReady'] === true;
         const plans = [
-            { name: '散布谣言', desc: '扰乱敌城民心 · 耗金40', action: () => this.executeRumor() },
-            { name: '夜袭粮道', desc: '降低井陉守军 · 耗金120', action: () => this.executePlan('夜袭粮道', 120, 700) },
-            { name: '反间敌将', desc: '降低敌军战意 · 耗金180', action: () => this.executePlan('反间敌将', 180, 950) },
-            { name: '伏兵太行', desc: '突袭胜算提高8% · 耗金260', action: () => this.executePlan('伏兵太行', 260, 1200) }
+            { name: '散布谣言', desc: `扰乱${target ? target.name : '敌城'}民心 · 耗金40`, action: () => this.executeRumor() },
+            { name: '离间敌将', desc: `离间${targetGeneral ? targetGeneral.name : '敌将'} · 耗金80`, action: () => this.executeScheme('discord') },
+            { name: '重金收买', desc: `收买${targetGeneral ? targetGeneral.name : '敌将'} · 耗金400`, action: () => this.executeScheme('bribe') },
+            { name: ambushReady ? '伏兵已就位' : '伏兵设险', desc: ambushReady ? '下次突袭无视城防加成' : '提升下次突袭胜算 · 耗金260', action: () => this.executeAmbush() }
         ];
         plans.forEach((plan, i) => {
             const card = this.panel(parent, `Plan_${i}`, 380, 69, C.panelSoft, -205 + (i % 2) * 410, 52 - Math.floor(i / 2) * 82, T.radius.card, C.bronzeSoft);
@@ -955,17 +1081,17 @@ export class WarCouncilScreen extends Component {
             this.pressable(card);
             this.entrance(card, i);
         });
-        this.label(parent, `当前井陉守军：${this.enemyStrength.toLocaleString()} · 突袭基础胜算 ${this.currentOption().odds}%`, 13, C.gold, 0, -101, 520, 24, true);
+        const odds = raidOdds(this.world, this.selectedCityId);
+        this.label(parent, target ? `前线敌情：${target.name} 守军${target.army.toLocaleString()} · 突袭胜算 ${odds}%${ambushReady ? '（伏兵就绪）' : ''}` : '境内无敌情，突袭暂不可行', 13, C.gold, 0, -101, 520, 24, true);
     }
 
     private renderDiplomacyPage(): void {
-        const parent = this.pageHeader('外交纵横', '选择势力后可进贡改善关系；关系与战争状态会随行动改变。');
+        const parent = this.pageHeader('外交纵横', '选择势力后可施外交行动；关系、盟约与战争状态会真实改变。');
         const bodyW = parent.getComponent(UITransform)!.contentSize.width;
         const cardGap = 8;
         const cardW = (bodyW - 30 - cardGap * 3) / 4;
         FACTIONS.filter((f) => f.id !== 'tang').slice(0, 8).forEach((faction, i) => {
             const relation = this.diplomacy.relations[faction.id] ?? 0;
-            const canTribute = this.treasury() >= 200;
             const atWar = this.diplomacy.atWar.includes(faction.id);
             const allied = this.diplomacy.allies.includes(faction.id);
             const status = atWar ? '交战' : allied ? '盟友' : relation >= 50 ? '友好' : relation >= 20 ? '交好' : '中立';
@@ -982,31 +1108,40 @@ export class WarCouncilScreen extends Component {
             this.label(badge, status, 9, tone, 0, 0, 34, 14, true);
             this.label(card, `关系 ${relation > 0 ? '+' : ''}${relation}`, 10, tone, -cardW / 2 + 54, -3, 64, 17, true, HorizontalTextAlignment.LEFT);
             this.drawValueBar(card, -5, -14, Math.max(58, cardW - 80), (relation + 100) / 200, tone);
-            this.label(card, canTribute ? '进贡 200金 · 改善关系' : '国库不足 · 需200金', 9, canTribute ? C.gold : C.muted, 0, -27, cardW - 24, 16, true);
-            if (canTribute) {
-                this.affordance(card, cardW / 2 - 10, -25, 0.72);
-                card.on(Node.EventType.TOUCH_END, () => {
-                    this.selectedFactionId = this.selectedFactionId === faction.id ? null : faction.id;
-                    this.showToast(this.selectedFactionId ? `已选${faction.name} · 确认后消耗200金` : '已取消外交选择');
-                    this.renderPageAgain('diplomacy');
-                }, this);
-                this.pressable(card);
-            }
+            this.label(card, '点选后可施五项外交', 9, C.muted, 0, -27, cardW - 24, 16, true);
+            this.affordance(card, cardW / 2 - 10, -25, 0.72);
+            card.on(Node.EventType.TOUCH_END, () => {
+                this.selectedFactionId = this.selectedFactionId === faction.id ? null : faction.id;
+                this.showToast(this.selectedFactionId ? `已选${faction.name} · 下方选择行动` : '已取消外交选择');
+                this.renderPageAgain('diplomacy');
+            }, this);
+            this.pressable(card);
             this.entrance(card, i);
-            if (!canTribute) {
-                const disabled = card.getComponent(UIOpacity) ?? card.addComponent(UIOpacity);
-                disabled.opacity = 170;
-            }
         });
         const summary = this.panel(parent, 'DiplomacySummary', bodyW - 30, 34, new Color(49, 39, 27, 242), 0, -101, T.radius.control, C.bronzeSoft, false);
         const selectedFaction = FACTIONS.find((faction) => faction.id === this.selectedFactionId);
         const selectedRelation = selectedFaction ? (this.diplomacy.relations[selectedFaction.id] ?? 0) : 0;
         this.label(summary, `国库 ${this.treasury().toLocaleString()} 金`, 11, C.gold, -bodyW / 2 + 116, 0, 195, 19, true);
-        this.label(summary, selectedFaction ? `已选${selectedFaction.name} · 关系 ${selectedRelation > 0 ? '+' : ''}${selectedRelation} → +30` : '请选择势力，查看进贡后的关系变化', 10, selectedFaction ? C.gold : C.muted, 78, 0, 270, 18, true, HorizontalTextAlignment.LEFT);
+        this.label(summary, selectedFaction ? `已选${selectedFaction.name} · 关系 ${selectedRelation > 0 ? '+' : ''}${selectedRelation}` : '请选择势力，下方执行外交行动', 10, selectedFaction ? C.gold : C.muted, 78, 0, 250, 18, true, HorizontalTextAlignment.LEFT);
         this.label(summary, `总兵力 ${this.tangPower().toLocaleString()}`, 10, C.muted, bodyW / 2 - 182, 0, 120, 18, true, HorizontalTextAlignment.RIGHT);
-        if (selectedFaction && this.treasury() >= 200) {
-            this.button(summary, 'ConfirmTribute', '确认进贡', bodyW / 2 - 55, 0, 82, 25, () => {
-                this.executeDiplomacy(selectedFaction.id, selectedFaction.name);
+        if (selectedFaction) {
+            // 五项外交行动：结盟150 / 停战80 / 进贡200 / 和亲350 / 威慑0
+            const actions: Array<{ key: DiploAction; name: string; cost: number; enabled: boolean; hint: string }> = [
+                { key: 'tribute', name: '进贡', cost: 200, enabled: this.treasury() >= 200, hint: '关系+30' },
+                { key: 'alliance', name: '结盟', cost: 150, enabled: this.treasury() >= 150 && !this.diplomacy.allies.includes(selectedFaction.id), hint: '求为盟友' },
+                { key: 'truce', name: '停战', cost: 80, enabled: this.treasury() >= 80 && this.diplomacy.atWar.includes(selectedFaction.id), hint: '止兵休战' },
+                { key: 'marriage', name: '和亲', cost: 350, enabled: this.treasury() >= 350 && !this.diplomacy.allies.includes(selectedFaction.id), hint: '联姻固盟' },
+                { key: 'threaten', name: '威慑', cost: 0, enabled: !this.diplomacy.atWar.includes(selectedFaction.id), hint: '迫其降望' }
+            ];
+            actions.forEach((act, i) => {
+                const x = bodyW / 2 - 232 + i * 96;
+                const btn = this.button(summary, `Diplo_${act.key}`, `${act.name}${act.cost ? ` ${act.cost}金` : ''}`, x, 0, 88, 25, act.enabled ? () => {
+                    this.executeDiplomacy(selectedFaction.id, selectedFaction.name, act.key);
+                } : () => this.showToast(act.key === 'truce' ? '两国并未交战' : act.key === 'threaten' ? '已处交战' : '条件不足', 'bad'));
+                if (!act.enabled) {
+                    const op = btn.getComponent(UIOpacity) ?? btn.addComponent(UIOpacity);
+                    op.opacity = 130;
+                }
             });
         }
     }
@@ -1112,7 +1247,8 @@ export class WarCouncilScreen extends Component {
         this.refreshTimeline();
         this.refreshReport();
         const option = this.currentOption();
-        this.showToast(`${option.title} · ${option.detail} · 胜算 ${option.odds}%`);
+        const odds = key === 'raid' ? raidOdds(this.world, this.selectedCityId) : option.odds;
+        this.showToast(`${option.title} · ${option.detail} · 胜算 ${odds}%`);
     }
 
     /** 传令是核心提交动作：未选军议或正在结算时必须明显禁用，并停止脉动光晕。 */
@@ -1136,6 +1272,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private onHoldStart(): void {
+        if (this.endingShown) return;
         if (!this.strategySelected) {
             this.showToast('请先选择军议策略，再长按传令', 'bad');
             return;
@@ -1173,40 +1310,16 @@ export class WarCouncilScreen extends Component {
         this.committed = true;
         this.updateOrderAvailability();
         const option = this.currentOption();
-        const city = this.states.find((item) => item.id === 'taiyuan') ?? this.selectedCity();
-        if (city.food < Math.abs(option.food)) {
-            this.showToast('粮草不足，军令无法下达', 'bad');
+        const city = this.states.find((item) => item.id === this.selectedCityId) ?? this.states.find((item) => item.id === 'taiyuan')!;
+        // 真实结算：兵力×统率×克制×城防，可胜可败可夺城；粮草校验在 CommandSystem 内完成
+        const result = executeCouncilOrder(this.world, option.key, city.id, Math.random);
+        if (!result.ok) {
+            this.showToast(result.reason, 'bad');
             this.resetOrderButton();
             return;
         }
-        city.food += option.food;
-        const outcome: BattleOutcome = { title: '', body: '', tone: 'good' };
-        if (option.key === 'defend') {
-            city.defense += 8;
-            city.morale = Math.min(100, city.morale + 3);
-            outcome.title = '并州防线加固';
-            outcome.body = `城防提升至 ${city.defense}，军心稳固，敌军暂缓推进。`;
-        } else if (option.key === 'pacify') {
-            city.morale = Math.min(100, city.morale + 8);
-            city.army += 600;
-            city.troops.fubing += 600;
-            outcome.title = '河东乡勇归附';
-            outcome.body = '新得府兵六百，民心提升，后方粮道恢复。';
-        } else {
-            const victory = this.enemyStrength <= 10500 || this.turns.getTurnNumber() % 2 === 0;
-            if (victory) {
-                this.enemyStrength = Math.max(2400, this.enemyStrength - 3600);
-                city.gold += 420;
-                outcome.title = '奇袭井陉得胜';
-                outcome.body = `李世民破敌三千六百，缴获黄金420，关隘守军降至 ${this.enemyStrength.toLocaleString()}。`;
-            } else {
-                city.army = Math.max(1000, city.army - 900);
-                city.troops.fubing = Math.max(0, city.troops.fubing - 900);
-                outcome.title = '井陉遭遇伏击';
-                outcome.body = '我军折损九百，斥候已查明敌军伏兵位置。';
-                outcome.tone = 'bad';
-            }
-        }
+        const outcome: BattleOutcome = { title: result.title, body: result.body, tone: result.tone };
+        const targetCity = result.raidTargetId ? this.states.find((c) => c.id === result.raidTargetId) : undefined;
         this.playOrderBriefing(option, () => this.playBattleSequence(option, outcome, () => {
             this.reports.unshift(outcome);
             this.reportCount += 1;
@@ -1216,6 +1329,9 @@ export class WarCouncilScreen extends Component {
             this.refreshReport();
             this.refreshHeader();
             this.showToast(`${outcome.title} · 已推进至${this.turns.getSeason()}`, outcome.tone);
+            if (targetCity && targetCity.faction === 'tang' && option.key === 'raid') {
+                this.showToast(`新拓疆土：${targetCity.name}已入唐土`, 'good');
+            }
             this.flashRoute();
             this.resetOrderButton();
         }));
@@ -1234,40 +1350,92 @@ export class WarCouncilScreen extends Component {
         this.updateOrderAvailability();
     }
 
+    /** 前线敌城：距所选唐城最近的相邻敌城（计策与突袭共用目标）。 */
+    private frontlineCity(): CityState | null {
+        const own = this.states.find((c) => c.id === this.selectedCityId && c.faction === 'tang')
+            ?? this.states.find((c) => c.id === 'taiyuan' && c.faction === 'tang');
+        if (!own) return null;
+        return raidTarget(this.world, own.id);
+    }
+
+    /** 我方谋略值：取在朝谋臣（刘文静）谋略。 */
+    private selfStrategy(): number {
+        const advisor = this.world.generals.find((g) => g.id === 'liuwenjing');
+        return advisor ? advisor.stats.strategy : 80;
+    }
+
     private executeRumor(): void {
         const source = this.states.find((city) => city.faction === 'tang');
-        const target = this.states.find((city) => city.faction !== 'tang');
-        if (!source || !target) return;
-        const result = spreadRumor(target.morale, 82, source.gold, () => 0.2);
+        const target = this.frontlineCity();
+        if (!source || !target) return this.showToast('境内无敌城可施计', 'bad');
+        const result = spreadRumor(target.morale, this.selfStrategy(), source.gold, Math.random);
         if (result.goldCost) source.gold -= result.goldCost;
         if (result.ok && result.moraleDelta) target.morale = Math.max(0, target.morale + result.moraleDelta);
-        this.reports.unshift({ title: '谣言已散布', body: result.ok ? `${target.name}民心动摇。` : result.reason, tone: result.ok ? 'good' : 'bad' });
+        this.reports.unshift({ title: result.ok ? '谣言已散布' : '计策败露', body: result.ok ? `${target.name}民心动摇。` : result.reason, tone: result.ok ? 'good' : 'bad' });
         this.reportCount += 1;
         this.refreshHeader();
         this.showToast(result.ok ? `计策成功：${target.name}民心下降` : result.reason, result.ok ? 'good' : 'bad');
         this.renderPageAgain('strategy');
     }
 
-    private executePlan(name: string, cost: number, damage: number): void {
-        const source = this.states.find((city) => city.faction === 'tang');
-        if (!source || source.gold < cost) return this.showToast('黄金不足', 'bad');
-        source.gold -= cost;
-        this.enemyStrength = Math.max(2400, this.enemyStrength - damage);
-        this.reports.unshift({ title: `${name}成功`, body: `井陉守军削弱 ${damage.toLocaleString()}，新的战机已经出现。`, tone: 'good' });
+    /** 离间/收买的目标签：前线敌城守将，无守将则取该势力主君。 */
+    private targetGeneralForScheme(): GeneralState | null {
+        const target = this.frontlineCity();
+        if (!target) return null;
+        if (target.generalId) {
+            const g = this.world.generals.find((item) => item.id === target.generalId);
+            if (g) return g;
+        }
+        const leader = this.world.generals.find((g) => g.faction === target.faction);
+        return leader ?? null;
+    }
+
+    private executeScheme(kind: 'discord' | 'bribe'): void {
+        const general = this.targetGeneralForScheme();
+        if (!general) return this.showToast('境内无敌将可施计', 'bad');
+        const cost = kind === 'discord' ? 80 : 400;
+        if (this.treasury() < cost) return this.showToast('黄金不足', 'bad');
+        const target = this.frontlineCity()!;
+        let result;
+        if (kind === 'discord') {
+            result = sowDiscord(general, this.selfStrategy(), this.treasury(), Math.random);
+        } else {
+            result = bribeGeneral(general, this.selfStrategy(), 82, this.treasury(), Math.random);
+        }
+        if (result.goldCost) this.deductTreasury(result.goldCost);
+        const title = kind === 'discord' ? '离间之计' : '重金收买';
+        this.reports.unshift({ title: result.ok ? `${title}奏效` : `${title}失败`, body: result.ok ? result.message : `${result.message || result.reason}（${target.name}）`, tone: result.ok ? 'good' : 'bad' });
         this.reportCount += 1;
         this.refreshHeader();
-        this.showToast(`${name}成功 · 敌军-${damage.toLocaleString()}`, 'good');
+        this.showToast(result.ok ? `${general.name}忠诚${result.loyaltyDelta ?? ''}` : result.reason, result.ok ? 'good' : 'bad');
         this.renderPageAgain('strategy');
     }
 
-    private executeDiplomacy(factionId: string, factionName: string): void {
-        const result = performDiplo(this.diplomacy, 'tang', factionId, 'tribute', { gold: this.treasury(), prestige: 82, armyPower: this.tangPower(), rng: () => 0.2 });
-        if (result.ok) this.deductTreasury(result.goldCost);
-        this.selectedFactionId = null;
-        this.reports.unshift({ title: `使者赴${factionName}`, body: result.ok ? `${factionName}关系改善。` : result.reason, tone: result.ok ? 'good' : 'bad' });
+    /** 伏兵设险：一次性提升下次突袭胜算（无视城防加成）。 */
+    private executeAmbush(): void {
+        if (this.world.flags['ambushReady'] === true) {
+            return this.showToast('伏兵已就位，待下次突袭建功', 'normal');
+        }
+        const source = this.states.find((city) => city.faction === 'tang');
+        if (!source || this.treasury() < 260) return this.showToast('黄金不足', 'bad');
+        this.deductTreasury(260);
+        this.world.flags['ambushReady'] = true;
+        this.reports.unshift({ title: '伏兵已设', body: '精锐埋伏于太行险道，下次突袭将无视敌城城防加成。', tone: 'good' });
         this.reportCount += 1;
         this.refreshHeader();
-        this.showToast(result.ok ? `${factionName}关系 +${result.relationsDelta}` : result.reason, result.ok ? 'good' : 'bad');
+        this.showToast('伏兵就位 · 下次突袭胜算大增', 'good');
+        this.renderPageAgain('strategy');
+    }
+
+    private executeDiplomacy(factionId: string, factionName: string, action: DiploAction = 'tribute'): void {
+        const result = performDiplo(this.diplomacy, 'tang', factionId, action, { gold: this.treasury(), prestige: 82, armyPower: this.tangPower(), rng: Math.random });
+        if (result.ok) this.deductTreasury(result.goldCost);
+        this.selectedFactionId = null;
+        const actionNames: Record<DiploAction, string> = { alliance: '结盟', truce: '停战', tribute: '进贡', marriage: '和亲', threaten: '威慑' };
+        this.reports.unshift({ title: `${actionNames[action]}·${factionName}`, body: result.ok ? result.message : result.reason, tone: result.ok ? 'good' : 'bad' });
+        this.reportCount += 1;
+        this.refreshHeader();
+        this.showToast(result.ok ? `${factionName} · ${result.message}` : result.reason, result.ok ? 'good' : 'bad');
         this.renderPageAgain('diplomacy');
     }
 
@@ -1350,7 +1518,16 @@ export class WarCouncilScreen extends Component {
     private selectedCity(): CityState {
         return this.states.find((city) => city.id === this.selectedCityId) ?? this.states.find((city) => city.faction === 'tang') ?? this.states[0];
     }
-    private currentOption(): CouncilOption { return COUNCIL.find((option) => option.key === this.selected)!; }
+    private currentOption(): CouncilOption {
+        const option = COUNCIL.find((o) => o.key === this.selected)!;
+        if (option.key === 'raid') {
+            const target = this.frontlineCity();
+            if (target) {
+                return { ...option, target: target.name };
+            }
+        }
+        return option;
+    }
     private treasury(): number { return this.states.filter((city) => city.faction === 'tang').reduce((sum, city) => sum + city.gold, 0); }
     private tangPower(): number { return this.states.filter((city) => city.faction === 'tang').reduce((sum, city) => sum + city.army, 0); }
     private deductTreasury(cost: number): void {
@@ -1391,6 +1568,52 @@ export class WarCouncilScreen extends Component {
     private flashRoute(): void {
         const opacity = this.routeLayer.getComponent(UIOpacity) ?? this.routeLayer.addComponent(UIOpacity);
         tween(opacity).to(0.12, { opacity: 35 }).to(0.12, { opacity: 255 }).to(0.12, { opacity: 35 }).to(0.18, { opacity: 255 }).start();
+    }
+
+    /** 结局结算画面：统一/偏安/覆亡全屏卡，可重开新局（清档重启）。 */
+    private showEndingScreen(grade: string, message: string): void {
+        if (this.endingShown) return;
+        this.endingShown = true;
+        this.removeCinematic();
+        this.toastNode.active = false;
+        const layer = this.container(this.node, 'EndingScreen', this.width, this.height, 40);
+        layer.setPosition(0, 0, 40);
+        layer.on(Node.EventType.TOUCH_START, () => undefined, this);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.image(layer, 'EndingMap', 'redesign/war-map-landscape/texture', this.width, this.height, 0, 0, 0);
+        this.rect(layer, 'EndingShade', this.width, this.height, new Color(6, 5, 4, 224), 0, 0);
+
+        const gradeTitle: Record<string, string> = {
+            unify: '天下一统',
+            reign: '贞观开元',
+            decline: '偏安一隅',
+            defeat: '李唐覆亡'
+        };
+        const gradeTone: Record<string, Color> = {
+            unify: C.gold,
+            reign: C.gold,
+            decline: C.muted,
+            defeat: C.red
+        };
+        const tone = gradeTone[grade] ?? C.gold;
+        const seal = this.panel(layer, 'EndingSeal', 92, 92, new Color(112, 36, 28, 245), 0, 72, 8, C.gold);
+        this.label(seal, '唐', 40, C.paper, 0, 0, 84, 56, true);
+        this.label(layer, gradeTitle[grade] ?? '天下终局', 34, tone, 0, 10, 520, 48, true);
+        this.label(layer, message, 15, C.paper, 0, -32, 620, 44, true);
+        const stats = this.states.filter((c) => c.faction === 'tang');
+        this.label(layer, `${this.turns.year} ${this.turns.getSeason()} · 唐土${stats.length}城 · 兵${this.tangPower().toLocaleString()}`, 12, C.muted, 0, -60, 520, 20, true);
+        this.label(layer, '本局战报已录入史册 · 存档将定格于此局', 10, C.bronze, 0, -78, 460, 18, true);
+
+        this.button(layer, 'EndingRestart', '重开新局', -92, -112, 150, 34, () => {
+            sys.localStorage.removeItem('tangwar_save_v1');
+            game.restart();
+        });
+        this.button(layer, 'EndingLinger', '再观天下', 92, -112, 150, 34, () => {
+            layer.destroy();
+            this.endingShown = false;
+            this.showToast('天下已定，可自由巡视疆土', 'normal');
+        });
+        this.entrance(seal, 0);
     }
 
     private playOrderBriefing(option: CouncilOption, onComplete: () => void): void {

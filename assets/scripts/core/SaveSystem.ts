@@ -2,7 +2,7 @@ import type { WorldState } from './WorldState';
 import type { CityState } from './ResourceSystem';
 import type { TroopType } from '../data/Troops';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SaveCity {
     id: string;
@@ -18,6 +18,28 @@ export interface SaveCity {
     troops: Record<TroopType, number>;
 }
 
+export interface SaveGeneral {
+    id: string;
+    loyalty: number;
+}
+
+export interface SaveDiplomacy {
+    relations: Record<string, number>;
+    allies: string[];
+    atWar: string[];
+}
+
+export interface SaveMarch {
+    id: string;
+    fromId: string;
+    toId: string;
+    troops: Record<TroopType, number>;
+    turnsLeft: number;
+    speed: number;
+    command?: number;
+    faction?: string;
+}
+
 export interface SaveData {
     meta: { version: number; savedAt: string };
     year: number;
@@ -25,6 +47,10 @@ export interface SaveData {
     turn: number;
     flags: Record<string, boolean | number>;
     cities: SaveCity[];
+    /** v2 起持久化：将领忠诚、外交关系、进行中的行军令 */
+    generals?: SaveGeneral[];
+    diplomacy?: SaveDiplomacy;
+    marches?: SaveMarch[];
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -46,14 +72,70 @@ export function serializeSave(world: WorldState): SaveData {
             generalId: c.generalId,
             facilities: { ...c.facilities },
             troops: { ...c.troops }
+        })),
+        generals: world.generals.map((g) => ({ id: g.id, loyalty: g.loyalty })),
+        diplomacy: {
+            relations: { ...world.diplomacy.relations },
+            allies: [...world.diplomacy.allies],
+            atWar: [...world.diplomacy.atWar]
+        },
+        marches: world.marches.map((m) => ({
+            id: m.id,
+            fromId: m.fromId,
+            toId: m.toId,
+            troops: { ...m.troops },
+            turnsLeft: m.turnsLeft,
+            speed: m.speed,
+            command: m.command,
+            faction: m.faction
         }))
     };
 }
 
-export function applySave(world: WorldState, data: SaveData): void {
-    if (data.meta.version !== SAVE_VERSION) {
-        throw new Error(`存档版本不兼容: ${data.meta.version}`);
+function applyGenerals(world: WorldState, data: SaveGeneral[] | undefined): void {
+    // v1 存档无将领运行态：沿用世界构造时的默认忠诚
+    if (!data) {
+        return;
     }
+    for (const g of data) {
+        const state = world.generals.find((item) => item.id === g.id);
+        if (state) {
+            state.loyalty = g.loyalty;
+        }
+    }
+}
+
+function applyDiplomacy(world: WorldState, data: SaveDiplomacy | undefined): void {
+    if (!data) {
+        return; // v1：保持世界构造时的默认关系
+    }
+    world.diplomacy.relations = { ...data.relations };
+    world.diplomacy.allies = [...data.allies];
+    world.diplomacy.atWar = [...data.atWar];
+}
+
+function applyMarches(world: WorldState, data: SaveMarch[] | undefined): void {
+    if (!data) {
+        return; // v1：无行军令
+    }
+    world.marches = data.map((m) => ({
+        id: m.id,
+        fromId: m.fromId,
+        toId: m.toId,
+        troops: { ...m.troops },
+        turnsLeft: m.turnsLeft,
+        speed: m.speed,
+        command: m.command,
+        faction: m.faction
+    }));
+}
+
+export function applySave(world: WorldState, data: SaveData): void {
+    const version = data.meta.version;
+    if (version !== 1 && version !== SAVE_VERSION) {
+        throw new Error(`存档版本不兼容: ${version}`);
+    }
+    // v1 -> v2：城池字段结构一致，将领/外交/行军缺失时用世界默认值兜底
     world.year = data.year;
     world.seasonIndex = data.seasonIndex;
     world.turn = data.turn;
@@ -75,5 +157,8 @@ export function applySave(world: WorldState, data: SaveData): void {
         c.facilities = { ...sc.facilities };
         c.troops = { ...sc.troops };
     }
+    applyGenerals(world, data.generals);
+    applyDiplomacy(world, data.diplomacy);
+    applyMarches(world, data.marches);
     world.log = [];
 }
