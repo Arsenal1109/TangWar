@@ -109,8 +109,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     {
         id: 'gold-hoard',
         name: '富甲一方',
-        desc: '单城府库累积达 800 金',
-        check: (w) => tangCities(w).some((c) => c.gold >= 800)
+        desc: '单城府库累积达 2000 金',
+        check: (w) => tangCities(w).some((c) => c.gold >= 2000)
     },
     {
         id: 'general-star',

@@ -11,6 +11,7 @@ import { serializeSave, applySave } from '../assets/scripts/core/SaveSystem';
 import { CITY_SPECIALTIES, SPECIALTIES, specialtyOf, specialtyName } from '../assets/scripts/data/Specialties';
 import { TROOPS } from '../assets/scripts/data/Troops';
 import { getCity } from '../assets/scripts/data/Cities';
+import { GENERALS } from '../assets/scripts/data/Generals';
 import type { TroopType } from '../assets/scripts/data/Troops';
 
 const LOW = () => 0.01;
@@ -186,5 +187,29 @@ describe('成就扩展（16 项）', () => {
         }
         runWorldTurn(world, HIGH);
         expect(world.flags['lowPoint']).toBe(true);
+    });
+});
+
+describe('成就校准审计（发行前回归）', () => {
+    it('富甲一方：开局任何唐城都不得直接达标（阈值高于初始府库 800）', () => {
+        const world = freshWorld();
+        const maxGold = world.cities.filter((c) => c.faction === 'tang').reduce((m, c) => Math.max(m, c.gold), 0);
+        expect(maxGold).toBe(800); // 事实基线：一级城开局 800 金
+        expect(checkAchievements(world)).not.toContain('gold-hoard');
+        // 蓄财可及：单城达 2000 即解锁
+        world.cities.find((c) => c.faction === 'tang')!.gold = 2000;
+        expect(checkAchievements(world)).toContain('gold-hoard');
+    });
+
+    it('五虎：勇武 ≥90 的可入手武将池至少五人（唐营+在野+可俘）', () => {
+        const world = freshWorld();
+        // 全体武将中勇武 ≥90 者至少 5 人（俘将/招募可入唐营）
+        expect(GENERALS.filter((g) => g.stats.valor >= 90).length).toBeGreaterThanOrEqual(5);
+        // 其中至少 4 人开局即在唐营（余者可通过招募与俘虏入手）
+        const tangValor = world.generals.filter((g) => {
+            const def = GENERALS.find((d) => d.id === g.id);
+            return g.faction === 'tang' && def && def.stats.valor >= 90;
+        });
+        expect(tangValor.length).toBe(4);
     });
 });

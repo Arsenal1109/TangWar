@@ -44,7 +44,7 @@ import { SCENARIOS } from '../core/Scenarios';
 import { talentOffer, recruitTalent } from '../core/TalentSystem';
 import { checkAchievements, ACHIEVEMENTS, achievementById } from '../core/Achievements';
 import { traitName, TRAIT_DEFS } from '../data/Traits';
-import { specialtyName, SPECIALTIES, specialtyOf } from '../data/Specialties';
+import { specialtyName, SPECIALTIES, specialtyOf, CITY_SPECIALTIES } from '../data/Specialties';
 import { addTroops } from '../core/Army';
 import { AUTO_SLOT } from '../core/SaveSlots';
 import type { SaveManager } from './SaveManager';
@@ -52,7 +52,7 @@ import { FACTIONS, getFaction } from '../data/Factions';
 import { GENERALS } from '../data/Generals';
 import { POLICIES } from '../data/Policies';
 import { TROOP_ORDER, TROOPS, type TroopType } from '../data/Troops';
-import { neighborsOf, getCity } from '../data/Cities';
+import { neighborsOf, getCity, CITIES } from '../data/Cities';
 
 const { ccclass } = _decorator;
 
@@ -1543,6 +1543,102 @@ export class WarCouncilScreen extends Component {
         });
     }
 
+    /** 玩法典章：数据驱动的系统总览（特产/特技/计策/功业/典制），随 defs 自动更新。 */
+    private showCodex(): void {
+        this.bus.emit('sfx', { name: 'select' });
+        const layer = this.container(this.node, 'CodexLayer', this.width, this.height, 60);
+        layer.setPosition(0, 0, 60);
+        layer.on(Node.EventType.TOUCH_END, () => undefined, this);
+        this.rect(layer, 'CodexShade', this.width, this.height, new Color(6, 5, 4, 226), 0, 0);
+        this.panel(layer, 'CodexBook', 760, 330, new Color(24, 20, 16, 252), 0, 0, 10, C.gold);
+        this.label(layer, '玩法典章', 20, C.gold, -312, 141, 160, 30, true, HorizontalTextAlignment.LEFT);
+        this.button(layer, 'CodexClose', '合卷', 312, 141, 76, 28, () => {
+            layer.destroy();
+        });
+        const tabs: Array<{ key: string; name: string }> = [
+            { key: 'loop', name: '经要' },
+            { key: 'specialty', name: '特产' },
+            { key: 'trait', name: '特技' },
+            { key: 'scheme', name: '计策' },
+            { key: 'ach', name: '功业' },
+            { key: 'rule', name: '典制' }
+        ];
+        let active = 'loop';
+        const body = this.panel(layer, 'CodexBody', 620, 260, new Color(16, 14, 11, 240), 46, -12, 10, C.bronzeSoft, false);
+        const renderTab = () => {
+            body.removeAllChildren();
+            const lines: Array<{ text: string; tone: 'gold' | 'paper' | 'muted' }> = [];
+            if (active === 'loop') {
+                lines.push({ text: '· 四季一轮：岁首岁贡与求贤，秋收粮丰（×1.25），冬藏粮薄（×0.7），岁末忠诚结算。', tone: 'paper' });
+                lines.push({ text: '· 每城每季一项军议：强化（建设/操练/抚民/扩储）与征伐（突袭/设防/安民）。', tone: 'paper' });
+                lines.push({ text: '· 突袭：胜而不破则城防受损；破城则缴获黄金、俘将或逐将，首年破城记「闪电奇袭」。', tone: 'paper' });
+                lines.push({ text: '· 计策府：谣言→民心，离间/收买→敌将，伏兵→下次突袭无视城防，劝降→民心<45 兵不血刃，劫粮→焚敌积仓。', tone: 'paper' });
+                lines.push({ text: '· 都督府：驻将可拜都督（至多两员），每季胜算六成自决出讨，自筹粮秣不占军议。', tone: 'gold' });
+                lines.push({ text: '· 称帝建元：八城可即位，择年号（武德/天授/义宁）定国策，群雄侧目、合纵更易。', tone: 'gold' });
+            } else if (active === 'specialty') {
+                const bySpec: Record<string, string[]> = {};
+                for (const [cityId, spec] of Object.entries(CITY_SPECIALTIES)) {
+                    (bySpec[SPECIALTIES[spec].name] ??= []).push(CITIES.find((c) => c.id === cityId)?.name ?? cityId);
+                }
+                for (const spec of Object.keys(SPECIALTIES) as Array<keyof typeof SPECIALTIES>) {
+                    const name = SPECIALTIES[spec].name;
+                    lines.push({ text: `· ${name}：${SPECIALTIES[spec].desc}`, tone: 'gold' });
+                    lines.push({ text: `  ${bySpec[name]?.join('、') ?? ''}`, tone: 'muted' });
+                }
+            } else if (active === 'trait') {
+                for (const t of Object.keys(TRAIT_DEFS) as Array<keyof typeof TRAIT_DEFS>) {
+                    lines.push({ text: `· ${TRAIT_DEFS[t].name}：${TRAIT_DEFS[t].desc}`, tone: 'paper' });
+                }
+                lines.push({ text: '  特技随武将而生：俘将归唐、在野来投皆携其技。', tone: 'muted' });
+            } else if (active === 'scheme') {
+                lines.push({ text: '· 散布谣言 40金：敌城民心 -6。', tone: 'paper' });
+                lines.push({ text: '· 离间敌将 80金：守将忠诚 -30。', tone: 'paper' });
+                lines.push({ text: '· 重金收买 400金：策反守将（忠诚低者易成）。', tone: 'paper' });
+                lines.push({ text: '· 伏兵设险 260金：下次突袭无视城防，攻方战力 +15%。', tone: 'paper' });
+                lines.push({ text: '· 劝降 300金：敌城民心 <45 可策反；守将七成归附（忠诚45），三成遁走。', tone: 'gold' });
+                lines.push({ text: '· 劫粮焚仓 150金：焚敌三成积仓，城防高者难成。', tone: 'paper' });
+                lines.push({ text: '· 借兵勤王 250金：盟邦遣府兵四百；姻盟冷却减半（4季）。', tone: 'paper' });
+                lines.push({ text: '· 阵前单挑：胜而不破且双方主将在阵时 15% 触发，武勇定胜负。', tone: 'gold' });
+            } else if (active === 'ach') {
+                for (const a of ACHIEVEMENTS) {
+                    lines.push({ text: `· ${a.name}：${a.desc}${this.world.achievements.includes(a.id) ? '（已达成）' : ''}`, tone: this.world.achievements.includes(a.id) ? 'gold' : 'paper' });
+                }
+            } else {
+                lines.push({ text: '· 姻盟：和亲结盟得嫁妆 400 金，此后岁贡翻倍（240），借兵冷却减半。', tone: 'paper' });
+                lines.push({ text: '· 借兵：向盟邦借府兵四百，八季一冷却，250 金一朝。', tone: 'paper' });
+                lines.push({ text: '· 忠诚岁结：敌将忠诚 <40 岁末可弃暗投明；唐将 <40 亦有叛忧。', tone: 'paper' });
+                lines.push({ text: '· 灾异丰稔：蝗疫火灾异频繁，商旅丰收名马甘露流民随难度增减。', tone: 'paper' });
+                lines.push({ text: '· 存档：每回合自动保存（v2），「立即保存」可手动定格。', tone: 'muted' });
+            }
+            lines.slice(0, 14).forEach((l, i) => {
+                this.label(body, l.text, 11, l.tone === 'gold' ? C.gold : l.tone === 'paper' ? C.paper : C.muted, -300, 112 - i * 17, 596, 17, false, HorizontalTextAlignment.LEFT);
+            });
+        };
+        tabs.forEach((tab, i) => {
+            const btn = this.button(layer, `CodexTab_${tab.key}`, tab.name, -312, 116 - i * 42, 72, 34, () => {
+                active = tab.key;
+                this.bus.emit('sfx', { name: 'select' });
+                for (const t2 of tabs) {
+                    const b2 = layer.getChildByName(`CodexTab_${t2.key}`);
+                    if (!b2) continue;
+                    const g2 = b2.getComponent(Graphics);
+                    if (g2) {
+                        g2.clear();
+                        this.drawPanelBg(g2, 72, 34, t2.key === active ? new Color(58, 27, 23, 248) : new Color(27, 24, 19, 252), T.radius.control, t2.key === active ? C.cinnabarHot : C.bronzeSoft, true);
+                    }
+                }
+                renderTab();
+            });
+            const g = btn.getComponent(Graphics);
+            if (g && tab.key === active) {
+                g.clear();
+                this.drawPanelBg(g, 72, 34, new Color(58, 27, 23, 248), T.radius.control, C.cinnabarHot, true);
+            }
+            this.pressable(btn);
+        });
+        renderTab();
+    }
+
     private renderSettingsPage(): void {
         const parent = this.pageHeader('设置', '横屏显示与反馈偏好会保留在本次游戏中。');
         const bodyW = parent.getComponent(UITransform)!.contentSize.width;
@@ -1571,6 +1667,13 @@ export class WarCouncilScreen extends Component {
             this.pressable(row);
             this.entrance(row, i);
         });
+        const codex = this.panel(parent, 'CodexEntry', cardW, 60, C.panelSoft, -cardX, -15, T.radius.card, C.bronzeSoft);
+        this.rect(codex, 'CodexAccent', 4, 38, C.gold, -cardW / 2 + 7, 0, 2);
+        this.label(codex, '玩法典章', 15, C.paper, -cardW / 2 + 100, 11, 160, 23, true, HorizontalTextAlignment.LEFT);
+        this.label(codex, '特产、特技、计策、功业与典制一览', 10, C.muted, -cardW / 2 + 138, -14, Math.max(170, cardW - 102), 18, false, HorizontalTextAlignment.LEFT);
+        this.button(codex, 'CodexGo', '览', cardW / 2 - 42, 0, 64, 26, () => this.showCodex());
+        this.pressable(codex);
+        this.entrance(codex, 4);
         const guide = this.panel(parent, 'ReplayGuide', cardW, 60, C.panelSoft, cardX, -15, T.radius.card, C.bronzeSoft);
         this.rect(guide, 'GuideAccent', 4, 38, C.gold, -cardW / 2 + 7, 0, 2);
         this.label(guide, '开场、剧情与引导', 15, C.paper, -cardW / 2 + 100, 11, 160, 23, true, HorizontalTextAlignment.LEFT);
