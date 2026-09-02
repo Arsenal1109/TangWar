@@ -28,10 +28,14 @@ npm test
 项目根目录执行：
 
 \`\`\`powershell
-.\build-apk.ps1
+.\build-apk.ps1        # 已签名 APK
+.\build-apk.ps1 -AAB   # 已签名 .aab（Google Play 用）
 \`\`\`
 
 脚本固定使用 \`D:\Gradle\gradle-8.11.1\bin\gradle.bat\`，不会调用会联网下载或选错版本的 Gradle Wrapper。
+签名配置：\`sh tools/gen-keystore.sh\` 生成 keystore，再建 \`signing.properties\`（见 \`signing.properties.example\`）或设 \`TANGWAR_RELEASE_*\` 环境变量。
+版本号：\`sh tools/bump-version.sh\`。
+完整上架流程见 \`docs/RELEASE.md\`。
 
 ## 项目结构
 

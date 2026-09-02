@@ -14,5 +14,10 @@ tests/node_modules/
 .DS_Store
 Thumbs.db
 
+# 签名材料：keystore 与口令绝不入库
+signing.properties
+*.keystore
+*.jks
+
 # 设计阶段产物（visual companion）
 /.superpowers/

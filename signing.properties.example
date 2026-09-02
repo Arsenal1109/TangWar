@@ -1,0 +1,7 @@
+# 复制本文件为 signing.properties 并填入真实值（signing.properties 已被 .gitignore 忽略）。
+# 生成 keystore：sh tools/gen-keystore.sh
+# build-apk.ps1 会自动读取本文件，把签名配置传给 Gradle。
+RELEASE_STORE_FILE=release.keystore
+RELEASE_STORE_PASSWORD=change-me
+RELEASE_KEY_ALIAS=tangwar
+RELEASE_KEY_PASSWORD=change-me
