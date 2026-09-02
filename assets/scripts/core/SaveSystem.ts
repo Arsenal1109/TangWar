@@ -58,6 +58,7 @@ export interface SaveData {
     pacts?: AiPacts;
     /** v2 起可选：本局史册（大事纪要）；旧档缺省空史册 */
     chronicle?: string[];
+    achievements?: string[];
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -103,7 +104,8 @@ export function serializeSave(world: WorldState): SaveData {
                 ? { target: world.pacts.coalition.target, members: [...world.pacts.coalition.members], turnsLeft: world.pacts.coalition.turnsLeft }
                 : null
         },
-        chronicle: [...world.chronicle]
+        chronicle: [...world.chronicle],
+        achievements: [...world.achievements]
     };
 }
 
@@ -190,5 +192,6 @@ export function applySave(world: WorldState, data: SaveData): void {
     }
     // 旧档缺省空史册
     world.chronicle = Array.isArray(data.chronicle) ? data.chronicle.filter((l) => typeof l === 'string') : [];
+    world.achievements = Array.isArray(data.achievements) ? data.achievements.filter((l) => typeof l === 'string') : [];
     world.log = [];
 }

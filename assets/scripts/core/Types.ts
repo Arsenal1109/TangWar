@@ -1,4 +1,6 @@
 // 共享基础类型（引擎无关，纯逻辑）
+import type { TraitId } from '../data/Traits';
+
 export type Season = '春' | '夏' | '秋' | '冬';
 
 export type FactionPersonality = 'aggressive' | 'defensive' | 'scheming' | 'expansionist';
@@ -34,4 +36,5 @@ export interface GeneralDef {
     faction: string;
     stats: GeneralStats;
     loyalty: number;     // 忠诚 1..100
+    trait?: TraitId;     // 特技（可选，至多一技）
 }

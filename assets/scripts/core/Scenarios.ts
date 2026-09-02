@@ -83,6 +83,7 @@ export function createScenarioWorld(scenarioId: string, difficulty: DifficultyId
         difficulty,
         pacts: createAiPacts(),
         chronicle: [],
+        achievements: [],
         flags: {},
         log: []
     };

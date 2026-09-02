@@ -6,6 +6,7 @@ import type { WorldState } from './WorldState';
 import { recordChronicle } from './WorldState';
 import type { CityState } from './ResourceSystem';
 import { TROOP_ORDER, type TroopType } from '../data/Troops';
+import { traitOf, TIEBI_DEFENSE, TIANCE_COMMAND } from './TraitEffects';
 
 // 军议三令的真实结算引擎：替代 UI 层剧本化战争。
 // 突袭按 兵力×统率×克制×城防 真实结算（BattleSystem），可胜可败、可夺城；
@@ -36,12 +37,12 @@ export const AMBUSH_BONUS = 0.15;
 const CAPTURE_ARMY_THRESHOLD = 800;
 const CAPTURE_DEFENSE_MAX = 2;
 
-/** 城池守将统率：任命将领 > 势力默认 55。 */
+/** 城池守将统率：任命将领 > 势力默认 55（天策特技 +5）。 */
 export function commandOf(city: CityState, generals: GeneralState[]): number {
     if (city.generalId) {
         const g = generals.find((item) => item.id === city.generalId);
         if (g) {
-            return g.stats.command;
+            return g.trait === 'tiance' ? g.stats.command + TIANCE_COMMAND : g.stats.command;
         }
     }
     return 55;
@@ -90,10 +91,11 @@ export function raidOdds(world: WorldState, fromId: string, ownFaction = 'tang')
         return 0;
     }
     const ambush = world.flags['ambushReady'] === true;
+    const defTrait = traitOf(target, world.generals);
     const p = winProbability(
-        { generalCommand: commandOf(city, world.generals), troops: { ...city.troops } },
-        { generalCommand: commandOf(target, world.generals), troops: { ...target.troops } },
-        { cityDefense: ambush ? 0 : target.defense }
+        { generalCommand: commandOf(city, world.generals), troops: { ...city.troops }, trait: traitOf(city, world.generals) },
+        { generalCommand: commandOf(target, world.generals), troops: { ...target.troops }, trait: defTrait },
+        { cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0) }
     );
     return Math.round(p * 100);
 }
@@ -150,16 +152,21 @@ export function executeCouncilOrder(
     }
 
     const ambush = world.flags['ambushReady'] === true;
+    const defTrait = traitOf(target, world.generals);
     const attCommand = commandOf(city, world.generals);
     const defCommand = commandOf(target, world.generals);
-    const attacker = { generalCommand: attCommand, troops: { ...city.troops } };
-    const defender = { generalCommand: defCommand, troops: { ...target.troops } };
+    const attacker = { generalCommand: attCommand, troops: { ...city.troops }, trait: traitOf(city, world.generals) };
+    const defender = { generalCommand: defCommand, troops: { ...target.troops }, trait: defTrait };
     const result = resolveBattle(attacker, defender, {
-        cityDefense: ambush ? 0 : target.defense,
+        cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0),
         rng
     });
     if (ambush) {
         world.flags['ambushReady'] = false; // 伏兵只策应一次突袭
+    }
+    // 功业计数：唐军战胜（成就：首战告捷）
+    if (result.attackerWin && city.faction === 'tang') {
+        world.flags['battleWins'] = (Number(world.flags['battleWins']) || 0) + 1;
     }
 
     removeArmy(city, result.attackerLoss);
@@ -181,6 +188,7 @@ export function executeCouncilOrder(
         target.generalId = null;
         captured = true;
         extra = `缴获黄金 ${loot}，${target.name}已入版图。`;
+        world.flags['captures'] = (Number(world.flags['captures']) || 0) + 1;
         recordChronicle(world, `唐军攻克${target.name}，缴获黄金${loot}金`);
     } else if (result.attackerWin) {
         extra = `${target.name}城防受损，守军士气受挫。`;

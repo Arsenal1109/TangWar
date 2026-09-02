@@ -39,6 +39,9 @@ import { createWorld } from '../core/WorldState';
 import { DIFFICULTY_ORDER, difficultyOf, applyDifficultyStart, type DifficultyId } from '../core/Difficulty';
 import { SCENARIOS } from '../core/Scenarios';
 import { talentOffer, recruitTalent } from '../core/TalentSystem';
+import { checkAchievements, ACHIEVEMENTS, achievementById } from '../core/Achievements';
+import { traitName, TRAIT_DEFS } from '../data/Traits';
+import { addTroops } from '../core/Army';
 import { AUTO_SLOT } from '../core/SaveSlots';
 import type { SaveManager } from './SaveManager';
 import { FACTIONS, getFaction } from '../data/Factions';
@@ -195,6 +198,7 @@ export class WarCouncilScreen extends Component {
     private saveMgr: SaveManager | null = null;
     /** 图鉴页当前点选的武将 id */
     private rosterSelected: string | null = null;
+    private rosterTab: 'heroes' | 'achievements' = 'heroes';
     private headerNode!: Node;
     private resNumbers: Record<'food' | 'gold' | 'army' | 'morale', Label> = {} as Record<'food' | 'gold' | 'army' | 'morale', Label>;
     private toastLabel!: Label;
@@ -264,6 +268,14 @@ export class WarCouncilScreen extends Component {
             this.refreshReport();
         });
         this.bus.on('game-ended', (event) => this.showEndingScreen(event.grade, event.message));
+        this.bus.on('achievement', (event) => {
+            this.reports.unshift({ title: '功业达成', body: `${event.name}——${event.desc}`, tone: 'good' });
+            this.reportCount += 1;
+            this.reportBadge.string = String(this.reportCount);
+            this.refreshReport();
+            this.showToast(`功业达成 · ${event.name}`, 'good');
+            this.bus.emit('sfx', { name: 'report' });
+        });
         this.bus.on('envoy-offer', (offer) => this.showEnvoyModal(offer));
         return this;
     }
@@ -1270,17 +1282,27 @@ export class WarCouncilScreen extends Component {
         this.label(summary, selectedFaction ? `已选${selectedFaction.name} · 关系 ${selectedRelation > 0 ? '+' : ''}${selectedRelation}` : '请选择势力，下方执行外交行动', 10, selectedFaction ? C.gold : C.muted, 78, 0, 250, 18, true, HorizontalTextAlignment.LEFT);
         this.label(summary, `总兵力 ${this.tangPower().toLocaleString()}`, 10, C.muted, bodyW / 2 - 182, 0, 120, 18, true, HorizontalTextAlignment.RIGHT);
         if (selectedFaction) {
-            // 五项外交行动：结盟150 / 停战80 / 进贡200 / 和亲350 / 威慑0
+            // 外交行动：结盟150 / 停战80 / 进贡200 / 和亲350 / 威慑0；盟邦追加借兵（8回合冷却）
+            const isAlly = this.diplomacy.allies.includes(selectedFaction.id);
+            const lastBorrow = Number(this.world.flags['borrowTurn']) || -99;
+            const borrowReady = this.world.turn - lastBorrow >= 8;
             const actions: Array<{ key: DiploAction; name: string; cost: number; enabled: boolean; hint: string }> = [
                 { key: 'tribute', name: '进贡', cost: 200, enabled: this.treasury() >= 200, hint: '关系+30' },
-                { key: 'alliance', name: '结盟', cost: 150, enabled: this.treasury() >= 150 && !this.diplomacy.allies.includes(selectedFaction.id), hint: '求为盟友' },
+                { key: 'alliance', name: '结盟', cost: 150, enabled: this.treasury() >= 150 && !isAlly, hint: '求为盟友' },
                 { key: 'truce', name: '停战', cost: 80, enabled: this.treasury() >= 80 && this.diplomacy.atWar.includes(selectedFaction.id), hint: '止兵休战' },
-                { key: 'marriage', name: '和亲', cost: 350, enabled: this.treasury() >= 350 && !this.diplomacy.allies.includes(selectedFaction.id), hint: '联姻固盟' },
+                { key: 'marriage', name: '和亲', cost: 350, enabled: this.treasury() >= 350 && !isAlly, hint: '联姻固盟' },
                 { key: 'threaten', name: '威慑', cost: 0, enabled: !this.diplomacy.atWar.includes(selectedFaction.id), hint: '迫其降望' }
             ];
+            if (isAlly) {
+                actions.push({ key: 'borrow', name: '借兵', cost: 250, enabled: this.treasury() >= 250 && borrowReady && (this.diplomacy.relations[selectedFaction.id] ?? 0) >= 30, hint: borrowReady ? '盟邦出兵' : '八回合一次' });
+            }
+            const six = actions.length === 6;
+            const gapX = six ? 88 : 96;
+            const btnW = six ? 80 : 88;
+            const startX = bodyW / 2 - (six ? 280 : 232);
             actions.forEach((act, i) => {
-                const x = bodyW / 2 - 232 + i * 96;
-                const btn = this.button(summary, `Diplo_${act.key}`, `${act.name}${act.cost ? ` ${act.cost}金` : ''}`, x, 0, 88, 25, act.enabled ? () => {
+                const x = startX + i * gapX;
+                const btn = this.button(summary, `Diplo_${act.key}`, `${act.name}${act.cost ? ` ${act.cost}金` : ''}`, x, 0, btnW, 25, act.enabled ? () => {
                     this.executeDiplomacy(selectedFaction.id, selectedFaction.name, act.key);
                 } : () => this.showToast(act.key === 'truce' ? '两国并未交战' : act.key === 'threaten' ? '已处交战' : '条件不足', 'bad'));
                 if (!act.enabled) {
@@ -1341,14 +1363,35 @@ export class WarCouncilScreen extends Component {
 
     /** 武将图鉴：左侧 8×4 半身像格，右侧详情卡（点选刷新）。 */
     private renderRosterPage(): void {
-        const parent = this.pageHeader('武将图鉴', '三十一位乱世豪杰尽列于此；点选半身像查看五维与驻守。');
+        const parent = this.pageHeader('武将图鉴', '三十五位乱世豪杰尽列于此；点选半身像查看五维、特技与驻守，亦可延请在野贤才。');
+        // 图鉴页双页签：豪杰（半身像）| 功业（成就）
+        const tabs: Array<{ key: 'heroes' | 'achievements'; label: string }> = [
+            { key: 'heroes', label: '豪杰' },
+            { key: 'achievements', label: '功业' }
+        ];
+        tabs.forEach((tab, i) => {
+            const active = this.rosterTab === tab.key;
+            const btn = this.button(parent, `RosterTab_${tab.key}`, tab.label, 288 + i * 72, 96, 64, 26, () => {
+                if (this.rosterTab === tab.key) return;
+                this.rosterTab = tab.key;
+                this.bus.emit('sfx', { name: 'select' });
+                this.renderPageAgain('roster');
+            });
+            this.pressable(btn);
+        });
+        const unlockedCount = this.world.achievements.length;
+        this.label(parent, `功业 ${unlockedCount}/${ACHIEVEMENTS.length}`, 11, C.gold, 356, 68, 70, 16, true, HorizontalTextAlignment.RIGHT);
+        if (this.rosterTab === 'achievements') {
+            this.renderAchievementsBody(parent);
+            return;
+        }
         const selected = this.rosterSelected ? GENERALS.find((g) => g.id === this.rosterSelected) : null;
         // —— 左：头像网格（8 列 × 4 行） ——
         const cols = 8;
         const cellW = 61;
-        const cellH = 74;
+        const cellH = 64;
         const gridX = -222;
-        const gridY = 118;
+        const gridY = 126;
         GENERALS.forEach((g, i) => {
             const col = i % cols;
             const rowIdx = Math.floor(i / cols);
@@ -1356,8 +1399,8 @@ export class WarCouncilScreen extends Component {
             const y = gridY - rowIdx * cellH;
             const isSel = this.rosterSelected === g.id;
             const chip = this.panel(parent, `Roster_${g.id}`, cellW - 6, cellH - 6, isSel ? new Color(58, 27, 23, 248) : C.panelSoft, x, y, T.radius.chip, isSel ? C.cinnabarHot : C.bronzeSoft);
-            this.image(chip, `RosterFace_${g.id}`, `redesign/portraits/${g.id}/texture`, 40, 40, 0, 8, 6);
-            this.label(chip, g.name, 11, isSel ? C.paper : C.gold, 0, -22, cellW - 10, 16, true);
+            this.image(chip, `RosterFace_${g.id}`, `redesign/portraits/${g.id}/texture`, 36, 36, 0, 7, 6);
+            this.label(chip, g.name, 11, isSel ? C.paper : C.gold, 0, -20, cellW - 10, 16, true);
             chip.on(Node.EventType.TOUCH_END, () => {
                 this.rosterSelected = g.id;
                 this.bus.emit('sfx', { name: 'select' });
@@ -1383,16 +1426,29 @@ export class WarCouncilScreen extends Component {
         // 在野豪杰：图鉴页直接延请（求贤令指引至此）
         const offer = talentOffer(this.world, selected.id);
         if (offer.available) {
-            this.label(detail, '贤才在野，延之则仕', 11, C.gold, 0, -12, 180, 18, true);
-            this.button(detail, 'RosterRecruit', `延请（${offer.cost}金）`, 0, -34, 150, 28, () => {
+            if (selected.trait) {
+                this.label(detail, `特技 · ${traitName(selected.trait)}`, 11, C.gold, 0, -6, 180, 18, true);
+                this.label(detail, TRAIT_DEFS[selected.trait].desc, 9, C.muted, 0, -22, 186, 16, false);
+            }
+            this.label(detail, '贤才在野，延之则仕', 11, C.gold, 0, -40, 180, 18, true);
+            this.button(detail, 'RosterRecruit', `延请（${offer.cost}金）`, 0, -62, 150, 28, () => {
                 const result = recruitTalent(this.world, selected.id);
                 this.showToast(result.ok ? `${selected.name}已仗策归唐` : result.message, result.ok ? 'good' : 'bad');
                 if (result.ok) {
                     this.bus.emit('sfx', { name: 'diplomacy' });
+                    for (const id of checkAchievements(this.world)) {
+                        const def = achievementById(id);
+                        if (def) this.bus.emit('achievement', { name: def.name, desc: def.desc });
+                    }
                 }
                 this.renderPageAgain('roster');
             });
             return;
+        }
+        // 特技一行：名（金）+ 效果（灰）
+        if (selected.trait) {
+            this.label(detail, `特技 · ${traitName(selected.trait)}`, 11, C.gold, 0, -2, 180, 18, true);
+            this.label(detail, TRAIT_DEFS[selected.trait].desc, 9, C.muted, 0, -18, 186, 16, false);
         }
         const statDefs: Array<{ key: keyof typeof selected.stats; label: string }> = [
             { key: 'command', label: '统军' },
@@ -1402,7 +1458,7 @@ export class WarCouncilScreen extends Component {
             { key: 'prestige', label: '威望' }
         ];
         statDefs.forEach((s, i) => {
-            const y = -18 - i * 26;
+            const y = (selected.trait ? -38 : -22) - i * 26;
             this.label(detail, s.label, 11, C.muted, -80, y, 44, 18, false, HorizontalTextAlignment.LEFT);
             // 五维条：金底 + 数值
             const barW = 88;
@@ -1411,8 +1467,27 @@ export class WarCouncilScreen extends Component {
             this.rect(detail, `RosterBar_${s.key}`, Math.max(3, barW * v / 100), 7, v >= 90 ? C.cinnabarHot : C.gold, 8 - (barW - Math.max(3, barW * v / 100)) / 2, y, 3);
             this.label(detail, String(v), 11, v >= 90 ? C.cinnabarHot : C.paper, 62, y, 30, 16, false);
         });
-        this.label(detail, `忠诚 ${loyalty}${loyalty < 50 ? '（心怀异志）' : ''}`, 12, loyalty < 50 ? C.red : C.green, 0, -152, 180, 18, true);
-        this.label(detail, station ? `驻守 · ${station.name}` : '游历 · 未授职', 11, station ? C.paper : C.muted, 0, -172, 180, 18, false);
+        this.label(detail, `忠诚 ${loyalty}${loyalty < 50 ? '（心怀异志）' : ''}`, 12, loyalty < 50 ? C.red : C.green, 0, selected.trait ? -166 : -152, 180, 18, true);
+        this.label(detail, station ? `驻守 · ${station.name}` : '游历 · 未授职', 11, station ? C.paper : C.muted, 0, selected.trait ? -184 : -172, 180, 18, false);
+    }
+
+    /** 功业页体：成就徽格（5 列 × 2 行），达成者金框点亮。 */
+    private renderAchievementsBody(parent: Node): void {
+        ACHIEVEMENTS.forEach((a, i) => {
+            const col = i % 5;
+            const row = Math.floor(i / 5);
+            const x = -304 + col * 152;
+            const y = 42 - row * 112;
+            const done = this.world.achievements.includes(a.id);
+            const chip = this.panel(parent, `Ach_${a.id}`, 146, 104, done ? new Color(58, 27, 23, 248) : C.panelSoft, x, y, T.radius.chip, done ? C.gold : C.bronzeSoft);
+            this.label(chip, a.name, 14, done ? C.gold : C.muted, 0, 28, 132, 22, true);
+            this.label(chip, a.desc, 9, done ? C.paper : C.muted, 0, 4, 134, 30, false);
+            const badge = this.panel(chip, `AchBadge_${a.id}`, 52, 20, done ? new Color(46, 84, 58, 220) : new Color(38, 34, 28, 220), 0, -32, 10, done ? C.green : C.bronzeSoft, false);
+            this.label(badge, done ? '已达成' : '未达成', 10, done ? C.green : C.muted, 0, 0, 46, 16, true);
+            if (done) {
+                this.entrance(chip, i % 5);
+            }
+        });
     }
 
     private renderSettingsPage(): void {
@@ -1710,7 +1785,21 @@ export class WarCouncilScreen extends Component {
         const result = performDiplo(this.diplomacy, 'tang', factionId, action, { gold: this.treasury(), prestige: 82, armyPower: this.tangPower(), rng: Math.random });
         if (result.ok) this.deductTreasury(result.goldCost);
         this.selectedFactionId = null;
-        const actionNames: Record<DiploAction, string> = { alliance: '结盟', truce: '停战', tribute: '进贡', marriage: '和亲', threaten: '威慑' };
+        const actionNames: Record<DiploAction, string> = { alliance: '结盟', truce: '停战', tribute: '进贡', marriage: '和亲', threaten: '威慑', borrow: '借兵' };
+        // 借兵成功：盟邦锐卒 400 入我军最盛之城，记冷却与功业
+        if (action === 'borrow' && result.ok) {
+            const host = this.states.filter((c) => c.faction === 'tang').sort((a, b) => b.army - a.army)[0];
+            if (host) {
+                addTroops(host, 'fubing', 400);
+                result.message = `${result.message}（府兵 400 入${host.name}）`;
+            }
+            this.world.flags['borrowTurn'] = this.world.turn;
+            this.world.flags['borrows'] = (Number(this.world.flags['borrows']) || 0) + 1;
+            for (const id of checkAchievements(this.world)) {
+                const def = achievementById(id);
+                if (def) this.bus.emit('achievement', { name: def.name, desc: def.desc });
+            }
+        }
         this.reports.unshift({ title: `${actionNames[action]}·${factionName}`, body: result.ok ? result.message : result.reason, tone: result.ok ? 'good' : 'bad' });
         this.reportCount += 1;
         this.refreshHeader();

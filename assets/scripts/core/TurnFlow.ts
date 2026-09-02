@@ -8,6 +8,7 @@ import { tickWorldMarches } from './MarchSystem';
 import { tickPacts, updateAiDiplomacy, applyAiSchemes, type EnvoyOffer } from './AIDiplomacy';
 import { rollRandomEvent } from './RandomEvents';
 import { resolveLoyaltyTurnover, announceTalents } from './TalentSystem';
+import { checkAchievements } from './Achievements';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
 
@@ -19,6 +20,8 @@ export interface TurnOutcome {
     alerts: string[];
     /** 群雄遣使要约（求和/勒索），需玩家抉择；无则 null */
     envoy: EnvoyOffer | null;
+    /** 本回合新解锁的功业（成就）id */
+    achievements: string[];
 }
 
 /** 盟邦岁贡：每年正月，每个盟邦向唐输财 120 金（入最富唐城）并深化邦交。 */
@@ -66,7 +69,7 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
         }
     }
 
-    const res = resolveTurn(world.cities);
+    const res = resolveTurn(world.cities, 5, world.generals);
     for (const e of res.events) {
         world.log.push(e.message);
     }
@@ -114,13 +117,16 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
     }
 
     const victory = checkVictory(world);
+    // 功业（成就）结算：从世界状态推导新解锁项
+    const achievements = checkAchievements(world);
 
     const out: TurnOutcome = {
         log: [...world.log, ...schemes],
         eventNames: ev.names,
         victory: victory.finished ? victory : null,
         alerts,
-        envoy
+        envoy,
+        achievements
     };
     world.log = [];
     return out;

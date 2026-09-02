@@ -128,10 +128,10 @@ describe('CommandSystem 军议三令（真实结算）', () => {
         expect(taiyuan.food).toBe(foodBefore); // 粮草退回
     });
 
-    it('守将统率参与结算：李世民驻太原统率 98', () => {
+    it('守将统率参与结算：李世民驻太原统率 98（天策特技 +5 → 103）', () => {
         const w = freshWorld();
         const taiyuan = w.cities.find((c) => c.id === 'taiyuan')!;
-        expect(commandOf(taiyuan, w.generals)).toBe(98);
+        expect(commandOf(taiyuan, w.generals)).toBe(103); // 98 + 天策 5
         const chengdu = w.cities.find((c) => c.id === 'chengdu')!;
         expect(commandOf(chengdu, w.generals)).toBe(55); // 无守将默认
     });

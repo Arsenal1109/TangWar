@@ -7,6 +7,7 @@ import { WarCouncilScreen } from './ui/WarCouncilScreen';
 import { createCityStates, resetTurnFlags } from './core/CityRegistry';
 import { createWorld, type WorldState } from './core/WorldState';
 import { runWorldTurn } from './core/TurnFlow';
+import { achievementById } from './core/Achievements';
 import { createGeneralStates } from './core/GeneralSystem';
 import { createDiplomacyState } from './core/Diplomacy';
 import { applyDifficultyStart } from './core/Difficulty';
@@ -33,6 +34,8 @@ export interface GameEvents {
     'envoy-offer': { faction: string; kind: 'peace' | 'demand'; gold?: number; truceTurns: number; message: string };
     /** 玩家对要约的抉择结果 */
     'envoy-respond': { accept: boolean };
+    /** 功业（成就）解锁播报 */
+    'achievement': { name: string; desc: string };
     /** 新局剧本选定（难度弹窗之后；对既有世界做归属/年代改写） */
     'scenario-chosen': { id: string };
 }
@@ -215,6 +218,13 @@ export class Bootstrap extends Component {
             const out = runWorldTurn(this.world);
             if (out.log.length || out.eventNames.length) {
                 this.bus.emit('world-events', { title: `${this.turns.year} ${this.turns.getSeason()} 天下大事`, messages: out.log });
+            }
+            // 功业达成提示（新解锁项逐条播报）
+            for (const id of out.achievements) {
+                const def = achievementById(id);
+                if (def) {
+                    this.bus.emit('achievement', { name: def.name, desc: def.desc });
+                }
             }
             if (out.victory) {
                 this.bus.emit('game-ended', { grade: out.victory.grade, message: out.victory.message });

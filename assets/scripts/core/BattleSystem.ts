@@ -1,8 +1,11 @@
 import { TROOP_ORDER, TROOPS, type TroopType, isCounter } from '../data/Troops';
+import { JUNSHEN_POWER } from './TraitEffects';
+import type { TraitId } from '../data/Traits';
 
 export interface BattleArmy {
     generalCommand: number; // 0..100
     troops: Record<TroopType, number>;
+    trait?: TraitId | null; // 统帅特技（军神：本方战力 +8%）
 }
 
 export interface BattleOptions {
@@ -22,7 +25,7 @@ function totalOf(troops: Record<TroopType, number>): number {
     return TROOP_ORDER.reduce((s, t) => s + (troops[t] ?? 0), 0);
 }
 
-function powerOf(troops: Record<TroopType, number>, command: number, offense: boolean): number {
+function powerOf(troops: Record<TroopType, number>, command: number, offense: boolean, trait?: TraitId | null): number {
     let power = 0;
     for (const t of TROOP_ORDER) {
         const n = troops[t] ?? 0;
@@ -31,7 +34,11 @@ function powerOf(troops: Record<TroopType, number>, command: number, offense: bo
         }
         power += n * (offense ? TROOPS[t].atk : TROOPS[t].def);
     }
-    return power * (1 + (command / 100) * 0.5);
+    power *= 1 + (command / 100) * 0.5;
+    if (trait === 'junshen') {
+        power *= 1 + JUNSHEN_POWER;
+    }
+    return power;
 }
 
 function counterBonus(att: Record<TroopType, number>, def: Record<TroopType, number>): number {
@@ -50,8 +57,8 @@ function counterBonus(att: Record<TroopType, number>, def: Record<TroopType, num
 export function winProbability(att: BattleArmy, def: BattleArmy, opts: Pick<BattleOptions, 'cityDefense' | 'riverPenalty'> = {}): number {
     const riverPenalty = opts.riverPenalty ?? 0;
     const cityBonus = (opts.cityDefense ?? 0) * 0.05;
-    const attPower = powerOf(att.troops, att.generalCommand, true) * (1 - riverPenalty) + counterBonus(att.troops, def.troops);
-    const defPower = powerOf(def.troops, def.generalCommand, false) * (1 + cityBonus);
+    const attPower = powerOf(att.troops, att.generalCommand, true, att.trait) * (1 - riverPenalty) + counterBonus(att.troops, def.troops);
+    const defPower = powerOf(def.troops, def.generalCommand, false, def.trait) * (1 + cityBonus);
     const attTotal = totalOf(att.troops);
     const defTotal = totalOf(def.troops);
     if (attTotal <= 0) return 0;
@@ -65,8 +72,8 @@ export function resolveBattle(att: BattleArmy, def: BattleArmy, opts: BattleOpti
     const riverPenalty = opts.riverPenalty ?? 0;
     const cityBonus = (opts.cityDefense ?? 0) * 0.05;
 
-    const attPower = powerOf(att.troops, att.generalCommand, true) * (1 - riverPenalty) + counterBonus(att.troops, def.troops);
-    const defPower = powerOf(def.troops, def.generalCommand, false) * (1 + cityBonus);
+    const attPower = powerOf(att.troops, att.generalCommand, true, att.trait) * (1 - riverPenalty) + counterBonus(att.troops, def.troops);
+    const defPower = powerOf(def.troops, def.generalCommand, false, def.trait) * (1 + cityBonus);
     const attTotal = totalOf(att.troops);
     const defTotal = totalOf(def.troops);
 

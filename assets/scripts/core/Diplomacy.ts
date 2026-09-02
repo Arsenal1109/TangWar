@@ -6,7 +6,12 @@ export interface DiplomacyState {
     atWar: string[];
 }
 
-export type DiploAction = 'alliance' | 'truce' | 'tribute' | 'marriage' | 'threaten';
+export type DiploAction = 'alliance' | 'truce' | 'tribute' | 'marriage' | 'threaten' | 'borrow';
+
+/** 借兵费用（黄金） */
+export const BORROW_COST = 250;
+/** 借兵最低关系门槛 */
+export const BORROW_RELATION = 30;
 
 export interface DiploCtx {
     gold: number;
@@ -116,6 +121,24 @@ export function performDiplo(
             }
             state.atWar.push(targetFaction);
             return { ok: false, reason: '对方不服，反致开战', goldCost: 0, relationsDelta: -30, message: `${targetFaction} 奋起反抗，两国交兵` };
+        }
+        case 'borrow': {
+            // 借兵勤王：仅限盟邦，关系过浅或非盟友不借；成功则盟邦出兵相援（兵力由调用方落城）
+            if (!state.allies.includes(targetFaction)) {
+                return { ok: false, reason: '非盟邦，不可借兵', goldCost: 0, relationsDelta: 0, message: '' };
+            }
+            if (rel < BORROW_RELATION) {
+                return { ok: false, reason: '邦交尚浅，盟邦不肯出兵', goldCost: 0, relationsDelta: 0, message: '' };
+            }
+            if (ctx.gold < BORROW_COST) {
+                return { ok: false, reason: '黄金不足', goldCost: 0, relationsDelta: 0, message: '' };
+            }
+            const prob = Math.min(0.9, base + rel / 250);
+            if (r < prob) {
+                state.relations[targetFaction] = clampRel(rel + 5);
+                return { ok: true, reason: '', goldCost: BORROW_COST, relationsDelta: 5, message: `盟邦允诺，遣锐卒来援` };
+            }
+            return { ok: false, reason: '盟邦婉拒，推说边事吃紧', goldCost: BORROW_COST, relationsDelta: -5, message: '借兵被婉拒' };
         }
         default:
             return { ok: false, reason: '未知行动', goldCost: 0, relationsDelta: 0, message: '' };

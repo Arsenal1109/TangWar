@@ -66,6 +66,7 @@ export function recruitTalent(world: WorldState, generalId: string): RecruitResu
     const msg = `${g.name}应求贤之聘，仗策归唐（耗金${cost}）`;
     world.log.push(msg);
     recordChronicle(world, msg);
+    world.flags['recruits'] = (Number(world.flags['recruits']) || 0) + 1;
     return { ok: true, message: msg };
 }
 

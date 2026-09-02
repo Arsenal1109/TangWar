@@ -24,6 +24,8 @@ export interface WorldState {
     pacts: AiPacts;
     /** 本局史册：值得铭记的大事（疆土易手/合纵/遣使/名将陨落），上限 ~120 条；存档 v2 起持久化 */
     chronicle: string[];
+    /** 本局功业（成就）已解锁 id；存档 v2 起持久化 */
+    achievements: string[];
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }
@@ -47,6 +49,7 @@ export function createWorld(
         difficulty,
         pacts: createAiPacts(),
         chronicle: [],
+        achievements: [],
         flags: {},
         log: []
     };

@@ -1,5 +1,6 @@
 import { GENERALS } from '../data/Generals';
 import type { GeneralStats } from './Types';
+import type { TraitId } from '../data/Traits';
 import type { ApplyResult } from './PolicySystem';
 
 export type GeneralRole = 'governor' | 'commander';
@@ -17,6 +18,7 @@ export interface GeneralState {
     stats: GeneralStats;
     loyalty: number;
     assignment: GeneralAssignment | null;
+    trait?: TraitId;
 }
 
 export function createGeneralStates(): GeneralState[] {
@@ -27,7 +29,8 @@ export function createGeneralStates(): GeneralState[] {
         faction: g.faction,
         stats: { ...g.stats },
         loyalty: g.loyalty,
-        assignment: null
+        assignment: null,
+        trait: g.trait
     }));
 }
 

@@ -1,4 +1,5 @@
 import type { TroopType } from '../data/Troops';
+import { WANGZUO_GOLD } from './TraitEffects';
 
 export interface CityFacilities {
     farm: number;     // 农田 0..3
@@ -46,14 +47,26 @@ const FACILITY_FOOD_BONUS = 0.2; // 农田每级 +20% 粮
 const FACILITY_GOLD_BONUS = 0.2; // 商市每级 +20% 金
 const GRANARY_PER_LEVEL = 300;   // 仓廪每级缓冲缺粮 300
 
-export function resolveTurn(cities: CityState[], armyFoodPerThousand = 5): TurnResult {
+
+export function resolveTurn(
+    cities: CityState[],
+    armyFoodPerThousand = 5,
+    generals?: Array<{ id: string; trait?: string }>
+): TurnResult {
     let totalGold = 0;
     let totalFood = 0;
     const events: CityEvent[] = [];
 
     for (const c of cities) {
         const foodGain = Math.floor(c.population * FOOD_PER_POP * (1 + FACILITY_FOOD_BONUS * c.facilities.farm));
-        const goldGain = Math.floor(c.population * GOLD_PER_POP * (1 + FACILITY_GOLD_BONUS * c.facilities.market));
+        let goldGain = Math.floor(c.population * GOLD_PER_POP * (1 + FACILITY_GOLD_BONUS * c.facilities.market));
+        // 王佐特技：守将坐镇，商税 +20%
+        if (generals && c.generalId) {
+            const gov = generals.find((g) => g.id === c.generalId);
+            if (gov?.trait === 'wangzuo') {
+                goldGain = Math.floor(goldGain * (1 + WANGZUO_GOLD));
+            }
+        }
         const foodCost = Math.floor(c.army / 1000) * armyFoodPerThousand;
 
         c.gold += goldGain;
