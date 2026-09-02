@@ -1,5 +1,11 @@
 import type { TroopType } from '../data/Troops';
 import { WANGZUO_GOLD } from './TraitEffects';
+import { specialtyOf } from '../data/Specialties';
+
+/** 特产加成系数 */
+const TRADE_GOLD = 0.15;   // 商埠：商税 +15%
+const FERTILE_FOOD = 0.15; // 膏腴：粮产 +15%
+const IRON_ALL = 0.10;     // 盐铁：金粮 +10%
 
 export interface CityFacilities {
     farm: number;     // 农田 0..3
@@ -67,12 +73,24 @@ export function resolveTurn(
                 goldGain = Math.floor(goldGain * (1 + WANGZUO_GOLD));
             }
         }
+        // 城池特产：商埠（金+15%）/ 膏腴（粮+15%）/ 盐铁（金粮+10%）
+        let foodMult = 1;
+        const specialty = specialtyOf(c.id);
+        if (specialty === 'trade') {
+            goldGain = Math.floor(goldGain * (1 + TRADE_GOLD));
+        } else if (specialty === 'fertile') {
+            foodMult += FERTILE_FOOD;
+        } else if (specialty === 'iron') {
+            goldGain = Math.floor(goldGain * (1 + IRON_ALL));
+            foodMult += IRON_ALL;
+        }
+        const foodGainFinal = Math.floor(foodGain * foodMult);
         const foodCost = Math.floor(c.army / 1000) * armyFoodPerThousand;
 
         c.gold += goldGain;
-        c.food += foodGain - foodCost;
+        c.food += foodGainFinal - foodCost;
         totalGold += goldGain;
-        totalFood += foodGain - foodCost;
+        totalFood += foodGainFinal - foodCost;
 
         if (c.food < 0) {
             // 缺粮：先由仓廪缓冲，再按缺口比例逃兵并降民心

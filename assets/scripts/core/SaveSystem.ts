@@ -28,6 +28,7 @@ export interface SaveDiplomacy {
     relations: Record<string, number>;
     allies: string[];
     atWar: string[];
+    marriedAllies?: string[];
 }
 
 export interface SaveMarch {
@@ -85,7 +86,8 @@ export function serializeSave(world: WorldState): SaveData {
         diplomacy: {
             relations: { ...world.diplomacy.relations },
             allies: [...world.diplomacy.allies],
-            atWar: [...world.diplomacy.atWar]
+            atWar: [...world.diplomacy.atWar],
+            marriedAllies: [...(world.diplomacy.marriedAllies ?? [])]
         },
         marches: world.marches.map((m) => ({
             id: m.id,
@@ -129,6 +131,7 @@ function applyDiplomacy(world: WorldState, data: SaveDiplomacy | undefined): voi
     world.diplomacy.relations = { ...data.relations };
     world.diplomacy.allies = [...data.allies];
     world.diplomacy.atWar = [...data.atWar];
+    world.diplomacy.marriedAllies = Array.isArray(data.marriedAllies) ? [...data.marriedAllies] : [];
 }
 
 function applyMarches(world: WorldState, data: SaveMarch[] | undefined): void {

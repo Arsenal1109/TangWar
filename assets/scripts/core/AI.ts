@@ -5,6 +5,7 @@ import { neighborsOf } from '../data/Cities';
 import { resolveBattle } from './BattleSystem';
 import { removeArmy } from './Army';
 import { TIEBI_DEFENSE } from './TraitEffects';
+import { specialtyOf } from '../data/Specialties';
 import { difficultyOf } from './Difficulty';
 import { isTrucedWithTang } from './AIDiplomacy';
 import type { FactionPersonality } from './Types';
@@ -160,7 +161,7 @@ export function applyAiActions(world: WorldState, actions: AiAction[], rng: () =
             const result = resolveBattle(
                 { generalCommand: sourceGeneral ? sourceGeneral.stats.command : 55, troops, trait: sourceGeneral?.trait ?? null },
                 { generalCommand: targetGeneral ? targetGeneral.stats.command : 55, troops: { ...target.troops }, trait: targetGeneral?.trait ?? null },
-                { cityDefense: target.defense + (targetGeneral?.trait === 'tiebi' ? TIEBI_DEFENSE : 0), rng }
+                { cityDefense: target.defense + (targetGeneral?.trait === 'tiebi' ? TIEBI_DEFENSE : 0) + (specialtyOf(target.id) === 'pass' ? 2 : 0), rng }
             );
             removeArmy(target, result.defenderLoss);
             if (result.attackerWin) {

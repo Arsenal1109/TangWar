@@ -87,6 +87,42 @@ export const ACHIEVEMENTS: AchievementDef[] = [
         name: '借兵勤王',
         desc: '首次向盟邦借得援军',
         check: (w) => flagNum(w, 'borrows') >= 1
+    },
+    {
+        id: 'veteran-army',
+        name: '百战精兵',
+        desc: '累计取得 10 场突袭胜利',
+        check: (w) => flagNum(w, 'battleWins') >= 10
+    },
+    {
+        id: 'blitz',
+        name: '闪电奇袭',
+        desc: '首年之内攻克首座敌城',
+        check: (w) => w.flags['blitz'] === true
+    },
+    {
+        id: 'comeback',
+        name: '绝地复兴',
+        desc: '仅剩两城以下后重振至六城',
+        check: (w) => w.flags['lowPoint'] === true && tangCities(w).length >= 6
+    },
+    {
+        id: 'gold-hoard',
+        name: '富甲一方',
+        desc: '单城府库累积达 800 金',
+        check: (w) => tangCities(w).some((c) => c.gold >= 800)
+    },
+    {
+        id: 'general-star',
+        name: '名将如云',
+        desc: '唐营将领达 16 人（收贤纳叛）',
+        check: (w) => tangGenerals(w).length >= 16
+    },
+    {
+        id: 'granary',
+        name: '粮秣如山',
+        desc: '唐土积粮达 15000 石',
+        check: (w) => tangCities(w).reduce((s, c) => s + c.food, 0) >= 15000
     }
 ];
 

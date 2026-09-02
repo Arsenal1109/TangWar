@@ -4,6 +4,8 @@ export interface DiplomacyState {
     relations: Record<string, number>; // -100..100
     allies: string[];
     atWar: string[];
+    /** 联姻盟邦：岁贡翻倍、借兵冷却减半；存档 v2 起持久化 */
+    marriedAllies?: string[];
 }
 
 export type DiploAction = 'alliance' | 'truce' | 'tribute' | 'marriage' | 'threaten' | 'borrow';
@@ -111,7 +113,14 @@ export function performDiplo(
             if (!state.allies.includes(targetFaction)) {
                 state.allies.push(targetFaction);
             }
-            return { ok: true, reason: '', goldCost: 350, relationsDelta: 50, message: `与 ${targetFaction} 和亲结盟` };
+            // 联姻独特红利：嫁妆 400 金（由调用方落库）+ 岁贡翻倍 + 借兵冷却减半
+            if (!state.marriedAllies) {
+                state.marriedAllies = [];
+            }
+            if (!state.marriedAllies.includes(targetFaction)) {
+                state.marriedAllies.push(targetFaction);
+            }
+            return { ok: true, reason: '', goldCost: 350, relationsDelta: 50, message: `与 ${targetFaction} 和亲结盟，嫁妆 400 金已入府库` };
         }
         case 'threaten': {
             const prob = Math.min(0.95, 0.3 + ctx.armyPower / 100000 + ctx.prestige / 300);

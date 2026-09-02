@@ -7,6 +7,10 @@ import { recordChronicle } from './WorldState';
 import type { CityState } from './ResourceSystem';
 import { TROOP_ORDER, type TroopType } from '../data/Troops';
 import { traitOf, TIEBI_DEFENSE, TIANCE_COMMAND } from './TraitEffects';
+import { specialtyOf } from '../data/Specialties';
+
+/** 雄关特产城防加成 */
+const PASS_DEFENSE = 2;
 
 // 军议三令的真实结算引擎：替代 UI 层剧本化战争。
 // 突袭按 兵力×统率×克制×城防 真实结算（BattleSystem），可胜可败、可夺城；
@@ -92,10 +96,11 @@ export function raidOdds(world: WorldState, fromId: string, ownFaction = 'tang')
     }
     const ambush = world.flags['ambushReady'] === true;
     const defTrait = traitOf(target, world.generals);
+    const defSpecialty = specialtyOf(target.id) === 'pass' ? PASS_DEFENSE : 0;
     const p = winProbability(
         { generalCommand: commandOf(city, world.generals), troops: { ...city.troops }, trait: traitOf(city, world.generals) },
         { generalCommand: commandOf(target, world.generals), troops: { ...target.troops }, trait: defTrait },
-        { cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0) }
+        { cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0) + defSpecialty }
     );
     return Math.round(p * 100);
 }
@@ -153,12 +158,13 @@ export function executeCouncilOrder(
 
     const ambush = world.flags['ambushReady'] === true;
     const defTrait = traitOf(target, world.generals);
+    const defSpecialty = specialtyOf(target.id) === 'pass' ? PASS_DEFENSE : 0;
     const attCommand = commandOf(city, world.generals);
     const defCommand = commandOf(target, world.generals);
     const attacker = { generalCommand: attCommand, troops: { ...city.troops }, trait: traitOf(city, world.generals) };
     const defender = { generalCommand: defCommand, troops: { ...target.troops }, trait: defTrait };
     const result = resolveBattle(attacker, defender, {
-        cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0),
+        cityDefense: ambush ? 0 : target.defense + (defTrait === 'tiebi' ? TIEBI_DEFENSE : 0) + defSpecialty,
         rng
     });
     if (ambush) {
@@ -189,6 +195,9 @@ export function executeCouncilOrder(
         captured = true;
         extra = `缴获黄金 ${loot}，${target.name}已入版图。`;
         world.flags['captures'] = (Number(world.flags['captures']) || 0) + 1;
+        if (world.turn <= 4) {
+            world.flags['blitz'] = true; // 首年（两季内）破城
+        }
         recordChronicle(world, `唐军攻克${target.name}，缴获黄金${loot}金`);
     } else if (result.attackerWin) {
         extra = `${target.name}城防受损，守军士气受挫。`;

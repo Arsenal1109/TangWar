@@ -36,9 +36,12 @@ export function collectAllyTribute(world: WorldState): string[] {
         if (!tang) {
             continue;
         }
-        tang.gold += 120;
+        // 联姻之盟：岁贡翻倍（240）
+        const married = world.diplomacy.marriedAllies?.includes(allyId) ?? false;
+        const amount = married ? 240 : 120;
+        tang.gold += amount;
         world.diplomacy.relations[allyId] = Math.max(-100, Math.min(100, (world.diplomacy.relations[allyId] ?? 0) + 2));
-        lines.push(`${getFaction(allyId).name}遣使岁贡，输金 120 入${tang.name}府库`);
+        lines.push(`${getFaction(allyId).name}遣使岁贡，输金 ${amount} 入${tang.name}府库`);
     }
     return lines;
 }
@@ -114,6 +117,11 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
         if (line.includes('歃血为盟') || line.includes('弃暗投明') || line.includes('仗策归唐')) {
             recordChronicle(world, line);
         }
+    }
+
+    // 绝地标记：唐土一度仅剩两城以下
+    if (world.cities.filter((c) => c.faction === 'tang').length <= 2) {
+        world.flags['lowPoint'] = true;
     }
 
     const victory = checkVictory(world);
