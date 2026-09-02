@@ -29,4 +29,24 @@ describe('TurnFlow 回合装配', () => {
         const first = w.log.length;
         expect(first).toBe(0); // runWorldTurn 结束已清空 log
     });
+
+    it('领土急报：AI 攻占唐城时以 alerts 呈现（不再是静默易主）', () => {
+        const w = createWorld(619, createCityStates());
+        // 压低唐兵力，AI 低随机必然扩张；唐城被夺后 alerts 非空且以「急报」开头
+        w.cities.filter((c) => c.faction === 'tang').forEach((c) => { c.army = 1000; });
+        const out = runWorldTurn(w, () => 0.05);
+        const tangLost = w.cities.filter((c) => c.faction !== 'tang' && ['taiyuan', 'jinyang', 'changan'].includes(c.id));
+        if (tangLost.length > 0) {
+            expect(out.alerts.length).toBeGreaterThan(0);
+            expect(out.alerts.every((a) => a.startsWith('急报'))).toBe(true);
+            expect(out.log.some((l) => l.startsWith('急报'))).toBe(true);
+        }
+    });
+
+    it('无领土丢失时 alerts 为空', () => {
+        const w = createWorld(618, createCityStates());
+        // 唐军强大 + 高随机 → AI 全部养锐，无扩张
+        const out = runWorldTurn(w, () => 0.95);
+        expect(out.alerts).toEqual([]);
+    });
 });

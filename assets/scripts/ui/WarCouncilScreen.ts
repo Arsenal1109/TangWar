@@ -237,11 +237,16 @@ export class WarCouncilScreen extends Component {
             if (this.page !== 'world') this.renderPageAgain(this.page);
         });
         this.bus.on('world-events', (event) => {
+            const isAlert = (msg: string) => msg.startsWith('急报');
+            const joined = event.messages.slice(0, 2).join('；') || '各地暂无重大异动。';
             this.reports.unshift({
                 title: event.title,
-                body: event.messages.slice(0, 2).join('；') || '各地暂无重大异动。',
-                tone: 'normal'
+                body: joined,
+                tone: event.messages.some(isAlert) ? 'bad' : 'normal'
             });
+            if (event.messages.some(isAlert)) {
+                this.showToast(event.messages.find(isAlert)!, 'bad');
+            }
             this.reportCount += 1;
             this.reportBadge.string = String(this.reportCount);
             this.refreshReport();
