@@ -69,7 +69,8 @@ interface DialogueLine {
     speaker: string;
     role: string;
     text: string;
-    portrait: 'redesign/li-shimin/texture' | 'redesign/liu-wenjing-optimized/texture';
+    /** 立绘资源路径：序章沿用专属手绘立绘；其他场景可用 redesign/portraits/<id>/texture */
+    portrait: string;
     side: 'left' | 'right';
 }
 
@@ -1014,6 +1015,7 @@ export class WarCouncilScreen extends Component {
             const row = this.panel(parent, `General_${general.id}`, 305, 32, C.panelSoft, 217, 30 - i * 37, T.radius.control, C.bronzeSoft);
             const state = this.world.generals.find((gs) => gs.id === general.id);
             const loyalty = state ? state.loyalty : general.loyalty;
+            this.image(row, `Portrait_${general.id}`, `redesign/portraits/${general.id}/texture`, 26, 26, -132, 0, 5);
             this.label(row, general.name, 14, C.paper, -102, 0, 76, 22, true, HorizontalTextAlignment.LEFT);
             this.label(row, `统${general.stats.command} 谋${general.stats.strategy} 勇${general.stats.valor} 忠${loyalty}`, 11, loyalty < 50 ? C.red : C.muted, 30, 0, 190, 20);
             this.affordance(row, 143, 0);
@@ -1139,6 +1141,15 @@ export class WarCouncilScreen extends Component {
         });
         const odds = raidOdds(this.world, this.selectedCityId);
         this.label(parent, target ? `前线敌情：${target.name} 守军${target.army.toLocaleString()} · 突袭胜算 ${odds}%${ambushReady ? '（伏兵就绪）' : ''}` : '境内无敌情，突袭暂不可行', 13, C.gold, 0, -101, 520, 24, true);
+        // 敌将立绘卡：计策目标的真容（离间/收买的对象，一眼可辨）
+        if (targetGeneral) {
+            const def = GENERALS.find((g) => g.id === targetGeneral.id);
+            const card = this.panel(parent, 'SchemeTarget', 380, 60, new Color(24, 21, 18, 244), 205, -76, T.radius.card, C.cinnabar, false);
+            this.image(card, 'SchemeTargetPortrait', `redesign/portraits/${targetGeneral.id}/texture`, 46, 46, -146, 0, 5);
+            this.label(card, def?.name ?? targetGeneral.id, 16, C.paper, -92, 14, 120, 22, true, HorizontalTextAlignment.LEFT);
+            this.label(card, def?.title ?? '', 10, C.muted, -92, -4, 240, 18, false, HorizontalTextAlignment.LEFT);
+            this.label(card, `忠诚 ${targetGeneral.loyalty}`, 12, targetGeneral.loyalty < 50 ? C.green : C.cinnabar, -92, -22, 240, 19, true, HorizontalTextAlignment.LEFT);
+        }
     }
 
     private renderDiplomacyPage(): void {
@@ -1680,6 +1691,9 @@ export class WarCouncilScreen extends Component {
     }
 
     private playOrderBriefing(option: CouncilOption, onComplete: () => void): void {
+        // 突袭军令加入敌将回话：以生成的立绘示人，突出「两军对垒」的临场感
+        const enemy = option.key === 'raid' ? this.targetGeneralForScheme() : null;
+        const enemyDef = enemy ? GENERALS.find((g) => g.id === enemy.id) : null;
         const lines: Record<CouncilKey, DialogueLine[]> = {
             raid: [
                 {
@@ -1712,7 +1726,19 @@ export class WarCouncilScreen extends Component {
                 }
             ]
         };
-        this.showDialogue(lines[option.key], 0, onComplete, `军令确认 · ${option.title}${option.target}`);
+        const brief = lines[option.key].slice();
+        if (enemy && enemyDef) {
+            brief.push({
+                speaker: enemyDef.name,
+                role: enemyDef.title,
+                side: 'right',
+                portrait: `redesign/portraits/${enemy.id}/texture`,
+                text: option.key === 'raid'
+                    ? `唐军动向已在眼中。${this.states.find((c) => c.id === this.selectedCityId)?.name ?? '此城'}城坚粮足，只管来攻。`
+                    : '两军相持，各自小心。'
+            });
+        }
+        this.showDialogue(brief, 0, onComplete, `军令确认 · ${option.title}${option.target}`);
     }
 
     private showDialogue(lines: DialogueLine[], index: number, onComplete: () => void, sceneTitle: string): void {
