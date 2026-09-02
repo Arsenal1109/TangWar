@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: 单元测试（vitest）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装依赖
+        working-directory: tests
+        run: npm ci
+      - name: 运行测试
+        working-directory: tests
+        run: npx vitest run
+
+  typecheck:
+    name: 类型检查（UI 基线）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 安装依赖
+        working-directory: tests
+        run: npm ci
+      - name: 类型检查
+        run: bash tools/typecheck.sh
+
+  font-coverage:
+    name: 字体覆盖校验
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装 fontTools
+        run: pip install fonttools
+      - name: 提取仓库字符集
+        run: node tools/extract-charset.mjs temp/font-subset/charset.txt
+      - name: 下载源字体（霞鹜文楷 Medium，SIL OFL 1.1）
+        run: |
+          mkdir -p temp
+          curl -fsSL -o temp/LXGWWenKai-Medium.ttf \
+            https://github.com/lxgw/LxgwWenKai/releases/download/v1.522/LXGWWenKai-Medium.ttf
+      - name: 校验子集覆盖
+        run: python3 tools/check-font-coverage.py --source temp/LXGWWenKai-Medium.ttf
