@@ -24,7 +24,19 @@ sh tools/gen-keystore.sh release.keystore
 - 项目根目录 `signing.properties`（参考 `signing.properties.example`）
 - 或环境变量 `TANGWAR_RELEASE_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD`
 
-## 2. 版本号
+## 2. 包名与应用名（只定一次，上架后不可改）
+
+- **包名（applicationId）**由 Creator 构建面板写入构建机本地 profiles（不入库）。
+  上架前在构建面板设为 `com.tangwar.game`（或自有域名反写），**切勿使用默认 `com.cocos.game`**。
+  `build-apk.ps1` 会在工程生成后自动校验，发现默认包名即中止。
+- **应用名**已固定为「隋唐风云」（`native/engine/android/res/values/strings.xml`）。
+- 图标/启动图由 `tools/gen-icon.py` 生成（印章「唐」真字形）：
+  - 启动器图标已写入 `native/engine/android/res/mipmap-*`（仓库内，可复现）
+  - 自适应图标（API 26+）：`res/mipmap-anydpi-v26/ic_launcher.xml` + `drawable-nodpi/ic_launcher_foreground.png`
+  - 商店 512 图标与启动图：`build-assets/icon/icon-512.png`、`splash-844x390.png`
+    （启动图需在 Creator 构建面板的自定义闪屏中选择 splash 文件）
+
+## 3. 版本号
 
 ```sh
 sh tools/bump-version.sh          # versionCode +1，versionName 末位 +1
@@ -33,7 +45,7 @@ sh tools/bump-version.sh 1.1.0    # 指定 versionName
 
 每次提审都要：`versionCode` 严格递增（商店以此判断升级），`versionName` 是给用户看的显示版本。
 
-## 3. 构建
+## 4. 构建
 
 ```powershell
 .\build-apk.ps1              # 已签名 APK（安装测试 / 国内商店多数要 APK）
@@ -42,7 +54,7 @@ sh tools/bump-version.sh 1.1.0    # 指定 versionName
 
 未配置签名时脚本会明确警告并产出**未签名包**——只可自测，不可上架。
 
-## 4. 上架材料清单
+## 5. 上架材料清单
 
 | 项目 | 要求 | 现状 |
 |---|---|---|
@@ -54,7 +66,7 @@ sh tools/bump-version.sh 1.1.0    # 指定 versionName
 | 目标受众 / 数据安全表 | Play Console 必填 | 离线单机：不收集任何数据 |
 | 首次发布审核周期 | 新应用 1–7 天 | 预留时间 |
 
-## 5. 发布前自测（最小回归）
+## 6. 发布前自测（最小回归）
 
 1. 全新安装 → 首启出现难度选择 → 序章 → 教学 → 可下达军令
 2. 打一仗（突袭马邑）、下一道行军令、做一次外交、放一个计策
@@ -62,7 +74,7 @@ sh tools/bump-version.sh 1.1.0    # 指定 versionName
 4. 杀进程重启 → 存档恢复（年代/资源/版图一致）
 5. 打到 626 年（或速改本机时间验证）→ 结局画面 → 重开新局正常
 
-## 6. 版本标签
+## 7. 版本标签
 
 ```sh
 git tag -a v1.0.1 -m "release 1.0.1"

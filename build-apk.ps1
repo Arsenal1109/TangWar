@@ -67,6 +67,21 @@ if (-not (Test-Path -LiteralPath $androidProject -PathType Container)) {
     throw "Android 工程未生成：$androidProject"
 }
 
+# 包名防呆：默认 com.cocos.game 不可上架；在 Creator 构建面板设定正式包名（如 com.tangwar.game）
+$gradleProps = Join-Path $androidProject 'gradle.properties'
+if (Test-Path -LiteralPath $gradleProps -PathType Leaf) {
+    $appIdLine = Select-String -LiteralPath $gradleProps -Pattern '^APPLICATION_ID\s*=\s*(.+?)\s*$' | Select-Object -First 1
+    if ($appIdLine) {
+        $appId = $appIdLine.Matches[0].Groups[1].Value
+        if ($appId -match '^com\.cocos\.' -or $appId -match '^com\.example\.' -or $appId -eq '') {
+            throw "包名仍是默认值 '$appId'，不可上架。请在 Creator 构建面板设定正式包名（如 com.tangwar.game）后重试。"
+        }
+        Write-Host "包名：$appId"
+    } else {
+        Write-Warning "gradle.properties 中未找到 APPLICATION_ID，跳过包名校验。"
+    }
+}
+
 Write-Host "[2/2] 使用固定 Gradle 打包：$gradleBin"
 Push-Location $androidProject
 try {

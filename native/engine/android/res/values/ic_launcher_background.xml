@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">隋唐风云</string>
+    <color name="ic_launcher_background">#171512</color>
 </resources>
