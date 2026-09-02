@@ -22,6 +22,8 @@ export interface WorldState {
     difficulty: DifficultyId;
     /** 群雄外交运行态：与唐停战 + 合纵盟约；存档 v2 起持久化 */
     pacts: AiPacts;
+    /** 本局史册：值得铭记的大事（疆土易手/合纵/遣使/名将陨落），上限 ~120 条；存档 v2 起持久化 */
+    chronicle: string[];
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }
@@ -44,9 +46,19 @@ export function createWorld(
         marches,
         difficulty,
         pacts: createAiPacts(),
+        chronicle: [],
         flags: {},
         log: []
     };
+}
+
+/** 追加一条史册（带年代季节前缀），超出上限丢弃最旧的。 */
+export function recordChronicle(world: WorldState, text: string): void {
+    const season = ['春', '夏', '秋', '冬'][world.seasonIndex] ?? '';
+    world.chronicle.push(`${world.year}年${season} · ${text}`);
+    if (world.chronicle.length > 120) {
+        world.chronicle.splice(0, world.chronicle.length - 120);
+    }
 }
 
 export function citiesOf(world: WorldState, faction: string): CityState[] {

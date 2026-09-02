@@ -3,6 +3,7 @@ import { neighborsOf, cityDistance, getCity } from '../data/Cities';
 import { getGeneralState, type GeneralState } from './GeneralSystem';
 import { removeArmy, addTroops } from './Army';
 import type { WorldState } from './WorldState';
+import { recordChronicle } from './WorldState';
 import type { CityState } from './ResourceSystem';
 import { TROOP_ORDER, type TroopType } from '../data/Troops';
 
@@ -180,6 +181,7 @@ export function executeCouncilOrder(
         target.generalId = null;
         captured = true;
         extra = `缴获黄金 ${loot}，${target.name}已入版图。`;
+        recordChronicle(world, `唐军攻克${target.name}，缴获黄金${loot}金`);
     } else if (result.attackerWin) {
         extra = `${target.name}城防受损，守军士气受挫。`;
     } else {

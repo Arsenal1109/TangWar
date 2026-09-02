@@ -56,6 +56,8 @@ export interface SaveData {
     difficulty?: string;
     /** v2 起可选：群雄外交运行态（停战/合纵）；旧档缺省空白态势 */
     pacts?: AiPacts;
+    /** v2 起可选：本局史册（大事纪要）；旧档缺省空史册 */
+    chronicle?: string[];
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -100,7 +102,8 @@ export function serializeSave(world: WorldState): SaveData {
             coalition: world.pacts.coalition
                 ? { target: world.pacts.coalition.target, members: [...world.pacts.coalition.members], turnsLeft: world.pacts.coalition.turnsLeft }
                 : null
-        }
+        },
+        chronicle: [...world.chronicle]
     };
 }
 
@@ -185,5 +188,7 @@ export function applySave(world: WorldState, data: SaveData): void {
             ? { target: data.pacts.coalition.target, members: [...data.pacts.coalition.members], turnsLeft: data.pacts.coalition.turnsLeft }
             : null;
     }
+    // 旧档缺省空史册
+    world.chronicle = Array.isArray(data.chronicle) ? data.chronicle.filter((l) => typeof l === 'string') : [];
     world.log = [];
 }

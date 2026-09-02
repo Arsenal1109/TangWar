@@ -1,5 +1,5 @@
 import type { WorldState } from './WorldState';
-import { factionPower, citiesOf } from './WorldState';
+import { factionPower, citiesOf, recordChronicle } from './WorldState';
 import { getFaction } from '../data/Factions';
 import { difficultyOf } from './Difficulty';
 import { sowDiscord, spreadRumor } from './Stratagem';
@@ -234,11 +234,13 @@ export function resolveEnvoy(world: WorldState, offer: EnvoyOffer, accept: boole
             relations[offer.faction] = clampRel((relations[offer.faction] ?? 0) + 15);
             const msg = `唐庭允和，与${name}罢兵${offer.truceTurns}季`;
             world.log.push(msg);
+            recordChronicle(world, msg);
             return { ok: true, message: msg };
         }
         relations[offer.faction] = clampRel((relations[offer.faction] ?? 0) - 10);
         const msg = `唐庭回绝${name}求和，来使赧然而退`;
         world.log.push(msg);
+        recordChronicle(world, msg);
         return { ok: false, message: msg };
     }
     // demand
@@ -264,10 +266,12 @@ export function resolveEnvoy(world: WorldState, offer: EnvoyOffer, accept: boole
         relations[offer.faction] = clampRel((relations[offer.faction] ?? 0) + 10);
         const msg = `唐庭纳岁币${cost}金，${name}许六季不犯`;
         world.log.push(msg);
+        recordChronicle(world, msg);
         return { ok: true, message: msg };
     }
     relations[offer.faction] = clampRel((relations[offer.faction] ?? 0) - 20);
     const msg = `唐庭拒纳岁币，${name}怀恨引兵而去`;
     world.log.push(msg);
+    recordChronicle(world, msg);
     return { ok: false, message: msg };
 }

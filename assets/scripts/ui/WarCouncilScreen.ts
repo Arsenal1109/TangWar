@@ -1837,6 +1837,18 @@ export class WarCouncilScreen extends Component {
         this.label(layer, `${this.turns.year} ${this.turns.getSeason()} · 唐土${stats.length}城 · 兵${this.tangPower().toLocaleString()}`, 12, C.muted, 0, -60, 520, 20, true);
         this.label(layer, '本局战报已录入史册 · 存档将定格于此局', 10, C.bronze, 0, -78, 460, 18, true);
 
+        // —— 史册卷轴：本局大事纪（最近 6 条，逆序）——
+        const chronicle = this.world.chronicle.slice(-6).reverse();
+        if (chronicle.length > 0) {
+            const scroll = this.panel(layer, 'EndingChronicle', 560, 88, new Color(18, 16, 13, 242), 0, -138, T.radius.card, C.bronzeSoft, false);
+            this.rect(scroll, 'ChronicleAccent', 4, 66, C.gold, -274, 0, 2);
+            this.label(scroll, '史册·大事', 12, C.gold, -252, 32, 120, 18, true, HorizontalTextAlignment.LEFT);
+            chronicle.forEach((line, i) => {
+                this.label(scroll, line, 10, i === 0 ? C.paper : C.muted, 12, 14 - i * 14, 520, 16, false, HorizontalTextAlignment.LEFT);
+            });
+            this.label(layer, `共 ${this.world.chronicle.length} 条`, 9, C.bronze, 250, -138, 80, 14, false);
+        }
+
         this.button(layer, 'EndingRestart', '重开新局', -92, -112, 150, 34, () => {
             sys.localStorage.removeItem('tangwar_save_v1');
             game.restart();

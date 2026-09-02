@@ -1,4 +1,5 @@
 import type { WorldState } from './WorldState';
+import { recordChronicle } from './WorldState';
 import { resolveTurn } from './ResourceSystem';
 import { decideFactions, applyAiActions } from './AI';
 import { checkHistoricalEvents } from './EventSystem';
@@ -40,6 +41,7 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
             const msg = `急报：${city.name}失守，已被${captor}攻占！`;
             alerts.push(msg);
             world.log.push(msg);
+            recordChronicle(world, `${city.name}失守，陷于${captor}`);
         }
     }
 
@@ -63,6 +65,15 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
     // 虎狼暗计（离间/谣言）→ 群雄外交推演：合纵结盟写日志，遣使要约交玩家抉择
     const schemes = applyAiSchemes(world, rand);
     const envoy = updateAiDiplomacy(world, rand);
+    // 历史事件与合纵盟约入史册（去重：eventSystem 自己的 log 不重复记）
+    for (const name of ev.names) {
+        recordChronicle(world, `史事 · ${name}`);
+    }
+    for (const line of world.log) {
+        if (line.includes('歃血为盟')) {
+            recordChronicle(world, line);
+        }
+    }
 
     const victory = checkVictory(world);
 
