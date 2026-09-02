@@ -28,6 +28,7 @@ export class SoundManager extends Component {
         this.bgmSource.volume = 0.32;
         bus.on('turn-advanced', () => this.play('turn-advanced'));
         bus.on('city-selected', () => this.play('city-selected'));
+        bus.on('sfx', ({ name }) => this.playPath(`sounds/${name}`));
         bus.on('audio-setting', ({ music }) => this.setMusicEnabled(music));
         input.once(Input.EventType.TOUCH_START, this.unlockAudio, this);
         input.once(Input.EventType.MOUSE_DOWN, this.unlockAudio, this);
@@ -80,19 +81,27 @@ export class SoundManager extends Component {
         if (!path) {
             return;
         }
-        const clip = this.clips.get(key);
+        this.playPath(path);
+    }
+
+    /** 通用音效通道：按资源路径播放（如 sounds/battle），缺失时缓存并降级日志。 */
+    private playPath(path: string): void {
+        if (!this.sfxEnabled) {
+            return;
+        }
+        const clip = this.clips.get(path);
         if (clip !== undefined) {
             this.playClip(clip, path);
             return;
         }
-        // 首次访问：异步加载，缺失（无美术资源）时缓存 null 并降级日志
+        // 首次访问：异步加载，缺失（无音频资源）时缓存 null 并降级日志
         resources.load(path, AudioClip, (err, c) => {
             if (err) {
-                this.clips.set(key, null);
-                console.log(`[音效] ${key}（无资源，已降级）`);
+                this.clips.set(path, null);
+                console.log(`[音效] ${path}（无资源，已降级）`);
                 return;
             }
-            this.clips.set(key, c);
+            this.clips.set(path, c);
             this.playClip(c, path);
         });
     }

@@ -246,6 +246,7 @@ export class WarCouncilScreen extends Component {
             });
             if (event.messages.some(isAlert)) {
                 this.showToast(event.messages.find(isAlert)!, 'bad');
+                this.bus.emit('sfx', { name: 'alert' });
             }
             this.reportCount += 1;
             this.reportBadge.string = String(this.reportCount);
@@ -1028,6 +1029,7 @@ export class WarCouncilScreen extends Component {
     private launchMarch(from: CityState, to: CityState): void {
         const check = canMarch(this.world, from.id, to.id);
         if (!check.ok) return this.showToast(check.reason, 'bad');
+        this.bus.emit('sfx', { name: 'march' });
         const troops = { ...from.troops };
         for (const t of TROOP_ORDER) {
             from.troops[t] = 0;
@@ -1325,6 +1327,7 @@ export class WarCouncilScreen extends Component {
         }
         const outcome: BattleOutcome = { title: result.title, body: result.body, tone: result.tone };
         const targetCity = result.raidTargetId ? this.states.find((c) => c.id === result.raidTargetId) : undefined;
+        this.bus.emit('sfx', { name: 'battle' });
         this.playOrderBriefing(option, () => this.playBattleSequence(option, outcome, () => {
             this.reports.unshift(outcome);
             this.reportCount += 1;
@@ -1370,6 +1373,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private executeRumor(): void {
+        this.bus.emit('sfx', { name: 'scheme' });
         const source = this.states.find((city) => city.faction === 'tang');
         const target = this.frontlineCity();
         if (!source || !target) return this.showToast('境内无敌城可施计', 'bad');
@@ -1396,6 +1400,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private executeScheme(kind: 'discord' | 'bribe'): void {
+        this.bus.emit('sfx', { name: 'scheme' });
         const general = this.targetGeneralForScheme();
         if (!general) return this.showToast('境内无敌将可施计', 'bad');
         const cost = kind === 'discord' ? 80 : 400;
@@ -1418,6 +1423,7 @@ export class WarCouncilScreen extends Component {
 
     /** 伏兵设险：一次性提升下次突袭胜算（无视城防加成）。 */
     private executeAmbush(): void {
+        this.bus.emit('sfx', { name: 'scheme' });
         if (this.world.flags['ambushReady'] === true) {
             return this.showToast('伏兵已就位，待下次突袭建功', 'normal');
         }
@@ -1433,6 +1439,7 @@ export class WarCouncilScreen extends Component {
     }
 
     private executeDiplomacy(factionId: string, factionName: string, action: DiploAction = 'tribute'): void {
+        this.bus.emit('sfx', { name: 'diplomacy' });
         const result = performDiplo(this.diplomacy, 'tang', factionId, action, { gold: this.treasury(), prestige: 82, armyPower: this.tangPower(), rng: Math.random });
         if (result.ok) this.deductTreasury(result.goldCost);
         this.selectedFactionId = null;
@@ -1579,6 +1586,7 @@ export class WarCouncilScreen extends Component {
     private showEndingScreen(grade: string, message: string): void {
         if (this.endingShown) return;
         this.endingShown = true;
+        this.bus.emit('sfx', { name: 'report' });
         this.removeCinematic();
         this.toastNode.active = false;
         const layer = this.container(this.node, 'EndingScreen', this.width, this.height, 40);

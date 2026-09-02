@@ -22,6 +22,8 @@ export interface GameEvents {
     'audio-setting': { music: boolean };
     /** 结局触发（胜负判定成立时发出一次） */
     'game-ended': { grade: string; message: string };
+    /** 通用音效通道：SoundManager 按需播放（sounds/* 资源缺失时优雅降级） */
+    'sfx': { name: 'turn' | 'select' | 'march' | 'battle' | 'report' | 'alert' | 'scheme' | 'diplomacy' };
 }
 
 @ccclass('Bootstrap')
