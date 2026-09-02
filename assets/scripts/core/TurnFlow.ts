@@ -72,7 +72,7 @@ export function runWorldTurn(world: WorldState, rng?: () => number): TurnOutcome
         }
     }
 
-    const res = resolveTurn(world.cities, 5, world.generals);
+    const res = resolveTurn(world.cities, 5, world.generals, world.seasonIndex);
     for (const e of res.events) {
         world.log.push(e.message);
     }

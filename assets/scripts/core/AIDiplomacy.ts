@@ -106,7 +106,9 @@ export function updateAiDiplomacy(world: WorldState, rng: () => number): EnvoyOf
     // —— 1) 合纵 ——
     const totalPower = world.cities.reduce((s, c) => s + c.army, 0);
     const dom = dominantFaction(world);
-    if (!world.pacts.coalition && dom && totalPower > 0 && dom.power >= totalPower * COALITION_SHARE) {
+    // 称帝者众矢之的：合纵阈值降至八成
+    const share = world.flags['proclaimed'] ? COALITION_SHARE * 0.8 : COALITION_SHARE;
+    if (!world.pacts.coalition && dom && totalPower > 0 && dom.power >= totalPower * share) {
         // 盟约的实value：唐之盟邦绝不加入讨唐合纵
         const exclude = dom.id === 'tang' ? new Set(world.diplomacy.allies) : new Set<string>();
         const others = activeAiFactions(world)

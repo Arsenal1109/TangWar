@@ -26,6 +26,8 @@ export interface WorldState {
     chronicle: string[];
     /** 本局功业（成就）已解锁 id；存档 v2 起持久化 */
     achievements: string[];
+    /** 称帝建元后的年号（未称帝为 null）；存档 v2 起持久化 */
+    eraName?: string | null;
     flags: Record<string, boolean | number>; // 历史分支 / once 触发标志
     log: string[];
 }

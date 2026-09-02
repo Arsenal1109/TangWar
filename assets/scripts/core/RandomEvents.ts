@@ -28,6 +28,43 @@ interface RandomEventDef {
 
 const EVENTS: RandomEventDef[] = [
     {
+        id: 'flood',
+        weight: 2,
+        run: (world, rng) => {
+            const city = pick(world.cities, rng);
+            if (!city) return null;
+            const sev = DISASTER_SEVERITY[world.difficulty];
+            const lost = Math.floor(city.food * 0.3 * sev);
+            if (lost <= 0 && city.population * 0.03 * sev < 0.05) return null;
+            city.food -= lost;
+            city.population = Math.floor(city.population * (1 - 0.03 * sev));
+            return `河堤决口，${city.name}田庐被淹，粮草折损${lost}石`;
+        }
+    },
+    {
+        id: 'omen',
+        weight: 2,
+        run: (world, rng) => {
+            const tang = world.cities.filter((c) => c.faction === 'tang');
+            const city = pick(tang, rng);
+            if (!city) return null;
+            const gain = Math.round(6 * BLESSING_FACTOR[world.difficulty]);
+            city.morale = Math.min(100, city.morale + gain);
+            return `甘露降于${city.name}，祥瑞现世，民心大悦`;
+        }
+    },
+    {
+        id: 'refugees',
+        weight: 2,
+        run: (world, rng) => {
+            const tang = world.cities.filter((c) => c.faction === 'tang');
+            const city = pick(tang, rng);
+            if (!city) return null;
+            city.population = Math.floor(city.population * 1.06);
+            return `四方流民来投，${city.name}户口滋繁`;
+        }
+    },
+    {
         id: 'locusts',
         weight: 3,
         run: (world, rng) => {

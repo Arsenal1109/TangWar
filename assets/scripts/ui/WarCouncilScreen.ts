@@ -31,6 +31,7 @@ import { recruit } from '../core/Military';
 import { applyPolicy } from '../core/PolicySystem';
 import { buildFacility, facilityCost, facilityName, FACILITY_MAX, type FacilityType } from '../core/FacilitySystem';
 import { sowDiscord, bribeGeneral, spreadRumor, persuadeSurrender, burnGranary, PERSUADE_COST, BURN_COST, PERSUADE_MORALE } from '../core/Stratagem';
+import { canProclaim, proclaimEmperor, ERAS, type EraId } from '../core/ImperialSystem';
 import type { GeneralState } from '../core/GeneralSystem';
 import type { CityState } from '../core/ResourceSystem';
 import type { WorldState } from '../core/WorldState';
@@ -1232,7 +1233,8 @@ export class WarCouncilScreen extends Component {
             { name: '重金收买', desc: `收买${targetGeneral ? targetGeneral.name : '敌将'} · 耗金400`, action: () => this.executeScheme('bribe') },
             { name: ambushReady ? '伏兵已就位' : '伏兵设险', desc: ambushReady ? '下次突袭无视城防加成' : '提升下次突袭胜算 · 耗金260', action: () => this.executeAmbush() },
             { name: '劝降', desc: persuadeTarget ? (persuadeReady ? `策反${persuadeTarget.name}（民心${persuadeTarget.morale}）· 耗金${PERSUADE_COST}` : `${persuadeTarget.name}民心未崩 · 耗金${PERSUADE_COST}`) : '需邻境敌城', action: () => this.executePersuade() },
-            { name: '劫粮焚仓', desc: `焚${target ? target.name : '敌城'}积仓 · 耗金${BURN_COST}`, action: () => this.executeBurn() }
+            { name: '劫粮焚仓', desc: `焚${target ? target.name : '敌城'}积仓 · 耗金${BURN_COST}`, action: () => this.executeBurn() },
+            { name: '称帝建元', desc: this.proclaimDesc(), action: () => {} } // 年号签才是真按钮
         ];
         plans.forEach((plan, i) => {
             const card = this.panel(parent, `Plan_${i}`, 252, 69, C.panelSoft, -264 + (i % 3) * 264, 52 - Math.floor(i / 2) * 82, T.radius.card, C.bronzeSoft);
@@ -1243,6 +1245,16 @@ export class WarCouncilScreen extends Component {
             this.pressable(card);
             this.entrance(card, i);
         });
+        // 称帝卡内嵌三枚年号签（八城可即位；已登大位则显示国号）
+        if (canProclaim(this.world) || this.world.flags['proclaimed']) {
+            const proclaimCard = parent.getChildByName('Plan_6');
+            if (proclaimCard) {
+                ERAS.forEach((era, ei) => {
+                    const chip = this.button(proclaimCard, `Era_${era.id}`, era.name, -62 + ei * 62, -14, 56, 20, () => this.executeProclaim(era.id));
+                    this.pressable(chip);
+                });
+            }
+        }
         const odds = raidOdds(this.world, this.selectedCityId);
         this.label(parent, target ? `前线敌情：${target.name} 守军${target.army.toLocaleString()} · 突袭胜算 ${odds}%${ambushReady ? '（伏兵就绪）' : ''}` : '境内无敌情，突袭暂不可行', 13, C.gold, 0, -101, 520, 24, true);
         // 敌将立绘卡：计策目标的真容（离间/收买的对象，一眼可辨）
@@ -1772,7 +1784,7 @@ export class WarCouncilScreen extends Component {
         if (kind === 'discord') {
             result = sowDiscord(general, this.selfStrategy(), this.treasury(), Math.random);
         } else {
-            result = bribeGeneral(general, this.selfStrategy(), 82, this.treasury(), Math.random);
+            result = bribeGeneral(general, this.selfStrategy(), 82, this.treasury(), Math.random); // 天授威望加成作用于外交线
         }
         if (result.goldCost) this.deductTreasury(result.goldCost);
         const title = kind === 'discord' ? '离间之计' : '重金收买';
@@ -1797,6 +1809,30 @@ export class WarCouncilScreen extends Component {
         this.reportCount += 1;
         this.refreshHeader();
         this.showToast('伏兵就位 · 下次突袭胜算大增', 'good');
+        this.renderPageAgain('strategy');
+    }
+
+    /** 称帝卡描述文案。 */
+    private proclaimDesc(): string {
+        if (this.world.flags['proclaimed']) {
+            return `大唐已建元「${this.world.eraName ?? '武德'}」`;
+        }
+        const count = this.world.cities.filter((c) => c.faction === 'tang').length;
+        return canProclaim(this.world) ? '八城在手，可即皇帝位（择年号）' : `唐土 ${count}/8 城，未足即位之数`;
+    }
+
+    /** 即皇帝位：择年号建元，定国策红利，群雄侧目。 */
+    private executeProclaim(eraId: EraId): void {
+        const result = proclaimEmperor(this.world, eraId);
+        if (!result.ok) {
+            this.showToast(result.reason, 'bad');
+            return;
+        }
+        this.bus.emit('sfx', { name: 'report' });
+        this.reports.unshift({ title: '大典告成', body: `${result.message}。群雄侧目，恐有合纵之谋。`, tone: 'good' });
+        this.reportCount += 1;
+        this.refreshHeader();
+        this.showToast(result.message, 'good');
         this.renderPageAgain('strategy');
     }
 
@@ -1850,7 +1886,8 @@ export class WarCouncilScreen extends Component {
 
     private executeDiplomacy(factionId: string, factionName: string, action: DiploAction = 'tribute'): void {
         this.bus.emit('sfx', { name: 'diplomacy' });
-        const result = performDiplo(this.diplomacy, 'tang', factionId, action, { gold: this.treasury(), prestige: 82, armyPower: this.tangPower(), rng: Math.random });
+        const eraPrestige = (Number(this.world.flags['eraPrestige']) || 0);
+        const result = performDiplo(this.diplomacy, 'tang', factionId, action, { gold: this.treasury(), prestige: 82 + eraPrestige, armyPower: this.tangPower(), rng: Math.random });
         if (result.ok) this.deductTreasury(result.goldCost);
         this.selectedFactionId = null;
         const actionNames: Record<DiploAction, string> = { alliance: '结盟', truce: '停战', tribute: '进贡', marriage: '和亲', threaten: '威慑', borrow: '借兵' };
@@ -1893,7 +1930,8 @@ export class WarCouncilScreen extends Component {
 
     private refreshHeader(): void {
         this.eraLabel.string = `${TurnManager.eraName(this.turns.year)} · ${this.turns.getSeason()}`;
-        this.difficultyLabel.string = `唐 · 李渊 · ${difficultyOf(this.world.difficulty).name}局`;
+        const era = this.world.eraName ? ` · ${this.world.eraName}` : '';
+        this.difficultyLabel.string = `唐 · 李渊${era} · ${difficultyOf(this.world.difficulty).name}局`;
         const own = this.states.filter((city) => city.faction === 'tang');
         const food = own.reduce((sum, city) => sum + city.food, 0);
         const gold = own.reduce((sum, city) => sum + city.gold, 0);

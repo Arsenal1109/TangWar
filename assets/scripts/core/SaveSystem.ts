@@ -60,6 +60,8 @@ export interface SaveData {
     /** v2 起可选：本局史册（大事纪要）；旧档缺省空史册 */
     chronicle?: string[];
     achievements?: string[];
+    /** 称帝年号（未称帝为 null / 旧档缺省） */
+    eraName?: string | null;
 }
 
 export function serializeSave(world: WorldState): SaveData {
@@ -107,7 +109,8 @@ export function serializeSave(world: WorldState): SaveData {
                 : null
         },
         chronicle: [...world.chronicle],
-        achievements: [...world.achievements]
+        achievements: [...world.achievements],
+        eraName: world.eraName ?? null
     };
 }
 
@@ -196,5 +199,6 @@ export function applySave(world: WorldState, data: SaveData): void {
     // 旧档缺省空史册
     world.chronicle = Array.isArray(data.chronicle) ? data.chronicle.filter((l) => typeof l === 'string') : [];
     world.achievements = Array.isArray(data.achievements) ? data.achievements.filter((l) => typeof l === 'string') : [];
+    world.eraName = typeof data.eraName === 'string' && data.eraName.length > 0 ? data.eraName : null;
     world.log = [];
 }

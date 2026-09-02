@@ -8,6 +8,12 @@ import type { CityState } from './ResourceSystem';
 import { TROOP_ORDER, type TroopType } from '../data/Troops';
 import { traitOf, TIEBI_DEFENSE, TIANCE_COMMAND } from './TraitEffects';
 import { specialtyOf } from '../data/Specialties';
+import { GENERALS } from '../data/Generals';
+
+/** 将领勇武（取自武将档，缺省 50） */
+function valorOf(generalId: string): number {
+    return GENERALS.find((g) => g.id === generalId)?.stats.valor ?? 50;
+}
 
 /** 雄关特产城防加成 */
 const PASS_DEFENSE = 2;
@@ -234,6 +240,36 @@ export function executeCouncilOrder(
     } else {
         city.morale = Math.max(0, city.morale - 6);
         extra = '攻势受挫，我军军心微降。';
+    }
+
+    // 阵前单挑：胜而不破且两军主将俱在时，15% 机遇触发武斗
+    if (result.attackerWin && !captured && city.generalId && target.generalId) {
+        const attGen = world.generals.find((item) => item.id === city.generalId);
+        const defGen = world.generals.find((item) => item.id === target.generalId);
+        if (attGen && defGen) {
+            if (rng() < 0.15) {
+                const attValor = valorOf(attGen.id);
+                const defValor = valorOf(defGen.id);
+                const attRoll = attValor + rng() * 30;
+                const defRoll = defValor + rng() * 30;
+                if (attRoll >= defRoll) {
+                    world.flags['duelWins'] = (Number(world.flags['duelWins']) || 0) + 1;
+                    target.morale = Math.max(0, target.morale - 8);
+                    if (rng() < 0.4) {
+                        world.generals = world.generals.filter((item) => item.id !== defGen.id);
+                        target.generalId = null;
+                        world.flags['kills'] = (Number(world.flags['kills']) || 0) + 1;
+                        extra += `阵前单挑，${attGen.name}阵斩${defGen.name}，敌军夺气！`;
+                        recordChronicle(world, `${attGen.name}阵前单挑，斩${defGen.name}于${target.name}城下`);
+                    } else {
+                        extra += `阵前单挑，${attGen.name}力压${defGen.name}，守军夺气。`;
+                    }
+                } else {
+                    city.morale = Math.max(0, city.morale - 6);
+                    extra += `阵前单挑，${defGen.name}技高一筹，${attGen.name}败归，我军气沮。`;
+                }
+            }
+        }
     }
 
     const title = result.attackerWin ? (captured ? `奇袭${target.name}得胜` : `${target.name}城下破敌`) : `${target.name}攻势受挫`;

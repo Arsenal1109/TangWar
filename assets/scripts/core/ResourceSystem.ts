@@ -57,7 +57,8 @@ const GRANARY_PER_LEVEL = 300;   // 仓廪每级缓冲缺粮 300
 export function resolveTurn(
     cities: CityState[],
     armyFoodPerThousand = 5,
-    generals?: Array<{ id: string; trait?: string }>
+    generals?: Array<{ id: string; trait?: string }>,
+    seasonIndex = -1
 ): TurnResult {
     let totalGold = 0;
     let totalFood = 0;
@@ -84,7 +85,14 @@ export function resolveTurn(
             goldGain = Math.floor(goldGain * (1 + IRON_ALL));
             foodMult += IRON_ALL;
         }
-        const foodGainFinal = Math.floor(foodGain * foodMult);
+        // 农时：秋收冬藏——秋季粮产 ×1.25，冬季 ×0.7
+        let seasonMult = 1;
+        if (seasonIndex === 2) {
+            seasonMult = 1.25;
+        } else if (seasonIndex === 3) {
+            seasonMult = 0.7;
+        }
+        const foodGainFinal = Math.floor(foodGain * foodMult * seasonMult);
         const foodCost = Math.floor(c.army / 1000) * armyFoodPerThousand;
 
         c.gold += goldGain;
