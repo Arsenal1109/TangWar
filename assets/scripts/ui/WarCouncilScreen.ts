@@ -2709,8 +2709,10 @@ export class WarCouncilScreen extends Component {
         if (this.bodyFont) {
             label.useSystemFont = false;
             label.font = this.bodyFont;
+        } else {
+            // 字体尚未就绪：登记待字体加载后补挂；已加载则不再累积死引用
+            this.labelRegistry.push(label);
         }
-        this.labelRegistry.push(label);
         node.setPosition(x, y, 3);
         parent.addChild(node);
         return label;
